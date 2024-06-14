@@ -5,6 +5,7 @@ use core::fmt::Debug;
 use core::ops::Add;
 use core::time::Duration;
 
+use ibc::core::client::context::client_state::ClientState;
 use ibc::core::client::context::consensus_state::ConsensusState;
 use ibc::core::client::types::Height;
 use ibc::core::primitives::prelude::*;
@@ -13,22 +14,26 @@ use ibc::primitives::proto::Any;
 
 pub use self::mock::MockHost;
 pub use self::tendermint::TendermintHost;
-use crate::testapp::ibc::clients::{AnyClientState, AnyConsensusState};
+use crate::testapp::ibc::core::types::MockIbcStore;
 
-pub type HostClientState<H> = <H as TestHost>::ClientState;
-pub type HostBlock<H> = <H as TestHost>::Block;
-pub type HostBlockParams<H> = <H as TestHost>::BlockParams;
-pub type HostLightClientParams<H> = <H as TestHost>::LightClientParams;
-pub type HostHeader<H> = <HostBlock<H> as TestBlock>::Header;
-pub type HostConsensusState<H> = <HostHeader<H> as TestHeader>::ConsensusState;
+pub type HostClientState<H, S> = <H as TestHost<S>>::ClientState;
+pub type HostBlock<H, S> = <H as TestHost<S>>::Block;
+pub type HostBlockParams<H, S> = <H as TestHost<S>>::BlockParams;
+pub type HostLightClientParams<H, S> = <H as TestHost<S>>::LightClientParams;
+pub type HostHeader<H, S> = <HostBlock<H, S> as TestBlock>::Header;
+pub type HostConsensusState<H, S> = <HostHeader<H, S> as TestHeader>::ConsensusState;
 
 /// TestHost is a trait that defines the interface for a host blockchain.
-pub trait TestHost: Default + Debug + Sized {
+pub trait TestHost<S>: Default + Debug + Sized {
     /// The type of block produced by the host.
     type Block: TestBlock;
 
     /// The type of client state produced by the host.
-    type ClientState: Into<AnyClientState> + Debug;
+    type ClientState: ClientState<
+            MockIbcStore<S, Self::ClientState, HostConsensusState<Self, S>>,
+            MockIbcStore<S, Self::ClientState, HostConsensusState<Self, S>>,
+        > + Clone
+        + Debug;
 
     /// The type of block parameter to produce a block.
     type BlockParams: Debug + Default;
@@ -142,7 +147,7 @@ pub trait TestBlock: Clone + Debug {
 /// submitted by relayer from the host blockchain.
 pub trait TestHeader: Clone + Debug + Into<Any> {
     /// The type of consensus state can be extracted from the header.
-    type ConsensusState: ConsensusState + Into<AnyConsensusState> + From<Self> + Clone + Debug;
+    type ConsensusState: ConsensusState + From<Self> + Clone + Debug;
 
     /// The height of the block, as recorded in the header.
     fn height(&self) -> Height;

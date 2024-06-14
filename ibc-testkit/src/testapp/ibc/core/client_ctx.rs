@@ -2,6 +2,8 @@ use core::fmt::Debug;
 
 use basecoin_store::context::{ProvableStore, Store};
 use basecoin_store::types::Height as StoreHeight;
+use ibc::core::client::context::client_state::ClientState;
+use ibc::core::client::context::consensus_state::ConsensusState;
 use ibc::core::client::context::{
     ClientExecutionContext, ClientValidationContext, ExtClientValidationContext,
 };
@@ -33,9 +35,12 @@ pub struct MockClientRecord {
     pub consensus_states: BTreeMap<Height, AnyConsensusState>,
 }
 
-impl<S> MockClientContext for MockIbcStore<S>
+impl<S, AnyClientState, AnyConsensusState> MockClientContext
+    for MockIbcStore<S, AnyClientState, AnyConsensusState>
 where
     S: ProvableStore + Debug,
+    AnyClientState: ClientState<Self, Self> + Clone,
+    AnyConsensusState: ConsensusState + Clone,
 {
     fn host_timestamp(&self) -> Result<Timestamp, ContextError> {
         ValidationContext::host_timestamp(self)
@@ -46,9 +51,12 @@ where
     }
 }
 
-impl<S> ExtClientValidationContext for MockIbcStore<S>
+impl<S, AnyClientState, AnyConsensusState> ExtClientValidationContext
+    for MockIbcStore<S, AnyClientState, AnyConsensusState>
 where
     S: ProvableStore + Debug,
+    AnyClientState: ClientState<Self, Self> + Clone,
+    AnyConsensusState: ConsensusState + Clone,
 {
     fn host_timestamp(&self) -> Result<Timestamp, ContextError> {
         ValidationContext::host_timestamp(self)
@@ -152,9 +160,12 @@ where
     }
 }
 
-impl<S> ClientValidationContext for MockIbcStore<S>
+impl<S, AnyClientState, AnyConsensusState> ClientValidationContext
+    for MockIbcStore<S, AnyClientState, AnyConsensusState>
 where
     S: ProvableStore + Debug,
+    AnyClientState: ClientState<Self, Self> + Clone,
+    AnyConsensusState: ConsensusState + Clone,
 {
     type ClientStateRef = AnyClientState;
     type ConsensusStateRef = AnyConsensusState;
@@ -224,9 +235,12 @@ where
     }
 }
 
-impl<S> ClientExecutionContext for MockIbcStore<S>
+impl<S, AnyClientState, AnyConsensusState> ClientExecutionContext
+    for MockIbcStore<S, AnyClientState, AnyConsensusState>
 where
     S: ProvableStore + Debug,
+    AnyClientState: ClientState<Self, Self> + Clone,
+    AnyConsensusState: ConsensusState + Clone,
 {
     type ClientStateMut = AnyClientState;
 
