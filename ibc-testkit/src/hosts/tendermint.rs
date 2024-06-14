@@ -1,5 +1,7 @@
+use core::fmt::Debug;
 use core::str::FromStr;
 
+use basecoin_store::context::ProvableStore;
 use ibc::clients::tendermint::client_state::ClientState;
 use ibc::clients::tendermint::consensus_state::ConsensusState;
 use ibc::clients::tendermint::types::proto::v1::Header as RawHeader;
@@ -39,7 +41,10 @@ impl Default for TendermintHost {
     }
 }
 
-impl TestHost for TendermintHost {
+impl<S> TestHost<S> for TendermintHost
+where
+    S: ProvableStore + Debug,
+{
     type Block = TmLightBlock;
     type BlockParams = BlockParams;
     type LightClientParams = ClientStateConfig;

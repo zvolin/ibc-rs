@@ -1,6 +1,7 @@
 use alloc::string::String;
 use core::marker::PhantomData;
 use core::time::Duration;
+use ibc::core::client::types::error::ClientError;
 
 use ibc::core::channel::types::acknowledgement::Acknowledgement;
 use ibc::core::channel::types::channel::Order;
@@ -12,7 +13,6 @@ use ibc::core::channel::types::msgs::{
 use ibc::core::channel::types::packet::Packet;
 use ibc::core::channel::types::timeout::TimeoutHeight;
 use ibc::core::channel::types::Version as ChannelVersion;
-use ibc::core::client::context::client_state::ClientStateValidation;
 use ibc::core::client::context::ClientValidationContext;
 use ibc::core::client::types::msgs::{ClientMsg, MsgCreateClient, MsgUpdateClient};
 use ibc::core::connection::types::msgs::{
@@ -29,12 +29,13 @@ use ibc::core::host::types::path::{
     ConnectionPath, ReceiptPath,
 };
 use ibc::core::host::ValidationContext;
+use ibc::primitives::proto::Any;
 use ibc::primitives::Signer;
 use ibc_query::core::context::ProvableContext;
 
-use crate::context::TestContext;
+use crate::context::{MockStore, TestContext};
 use crate::hosts::{HostClientState, TestBlock, TestHost};
-use crate::testapp::ibc::core::types::{DefaultIbcStore, LightClientBuilder, LightClientState};
+use crate::testapp::ibc::core::types::{LightClientBuilder, LightClientState};
 
 /// Implements IBC relayer functions for a pair of [`TestHost`] implementations: `A` and `B`.
 /// Note that, all the implementations are in one direction: from `A` to `B`.
@@ -45,17 +46,17 @@ use crate::testapp::ibc::core::types::{DefaultIbcStore, LightClientBuilder, Ligh
 #[derive(Debug, Default)]
 pub struct TypedRelayerOps<A, B>(PhantomData<A>, PhantomData<B>)
 where
-    A: TestHost,
-    B: TestHost,
-    HostClientState<A>: ClientStateValidation<DefaultIbcStore>,
-    HostClientState<B>: ClientStateValidation<DefaultIbcStore>;
+    A: TestHost<MockStore>,
+    B: TestHost<MockStore>,
+    <HostClientState<A, MockStore> as TryFrom<Any>>::Error: Into<ClientError>,
+    <HostClientState<B, MockStore> as TryFrom<Any>>::Error: Into<ClientError>;
 
 impl<A, B> TypedRelayerOps<A, B>
 where
-    A: TestHost,
-    B: TestHost,
-    HostClientState<A>: ClientStateValidation<DefaultIbcStore>,
-    HostClientState<B>: ClientStateValidation<DefaultIbcStore>,
+    A: TestHost<MockStore>,
+    B: TestHost<MockStore>,
+    <HostClientState<A, MockStore> as TryFrom<Any>>::Error: Into<ClientError>,
+    <HostClientState<B, MockStore> as TryFrom<Any>>::Error: Into<ClientError>,
 {
     /// Creates a client on `A` with the state of `B`.
     /// Returns the client identifier on `A`.
