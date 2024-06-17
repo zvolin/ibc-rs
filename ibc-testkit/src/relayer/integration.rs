@@ -15,8 +15,8 @@ use crate::testapp::ibc::core::types::DefaultIbcStore;
 /// to simulate the transfer of tokens between two contexts.
 pub fn ibc_integration_test<A, B>()
 where
-    A: TestHost,
-    B: TestHost,
+    A: TestHost<DefaultIbcStore>,
+    B: TestHost<DefaultIbcStore>,
     HostClientState<A>: ClientStateValidation<DefaultIbcStore>,
     HostClientState<B>: ClientStateValidation<DefaultIbcStore>,
 {
