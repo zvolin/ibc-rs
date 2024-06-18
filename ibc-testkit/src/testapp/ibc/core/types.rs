@@ -206,7 +206,10 @@ where
     }
 }
 
-pub struct LightClientState<H: TestHost<S>, S> {
+pub struct LightClientState<H: TestHost<S>, S>
+where
+    S: ProvableStore + Debug,
+{
     pub client_state: H::ClientState,
     pub consensus_states: BTreeMap<Height, HostConsensusState<H, S>>,
 }

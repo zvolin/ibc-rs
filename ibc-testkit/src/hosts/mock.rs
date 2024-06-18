@@ -1,5 +1,7 @@
 use alloc::vec::Vec;
+use std::fmt::Debug;
 
+use basecoin_store::context::ProvableStore;
 use ibc::core::client::types::Height;
 use ibc::core::host::types::identifiers::ChainId;
 use ibc::core::primitives::Timestamp;
@@ -26,7 +28,10 @@ impl Default for MockHost {
     }
 }
 
-impl<S> TestHost<S> for MockHost {
+impl<S> TestHost<S> for MockHost
+where
+    S: ProvableStore + Debug,
+{
     type Block = MockHeader;
     type ClientState = MockClientState;
     type BlockParams = ();

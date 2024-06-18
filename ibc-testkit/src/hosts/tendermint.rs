@@ -1,9 +1,15 @@
+use core::fmt::Debug;
 use core::str::FromStr;
 
+use basecoin_store::context::ProvableStore;
 use ibc::clients::tendermint::client_state::ClientState;
 use ibc::clients::tendermint::consensus_state::ConsensusState;
 use ibc::clients::tendermint::types::proto::v1::Header as RawHeader;
 use ibc::clients::tendermint::types::{Header, TENDERMINT_HEADER_TYPE_URL};
+use ibc::core::client::context::{
+    ClientExecutionContext, ClientValidationContext, ExtClientExecutionContext,
+    ExtClientValidationContext,
+};
 use ibc::core::client::types::Height;
 use ibc::core::host::types::identifiers::ChainId;
 use ibc::core::primitives::prelude::*;
@@ -21,6 +27,7 @@ use typed_builder::TypedBuilder;
 
 use crate::fixtures::clients::tendermint::ClientStateConfig;
 use crate::hosts::{TestBlock, TestHeader, TestHost};
+use crate::testapp::ibc::clients::ClientStateExt;
 
 /// A host that produces Tendermint blocks and interfaces with Tendermint light clients.
 #[derive(TypedBuilder, Debug)]
@@ -39,7 +46,10 @@ impl Default for TendermintHost {
     }
 }
 
-impl<S> TestHost<S> for TendermintHost {
+impl<S> TestHost<S> for TendermintHost
+where
+    S: ProvableStore + Debug,
+{
     type Block = TmLightBlock;
     type BlockParams = BlockParams;
     type LightClientParams = ClientStateConfig;
@@ -96,6 +106,16 @@ impl<S> TestHost<S> for TendermintHost {
         client_state.inner().validate().expect("never fails");
 
         client_state
+    }
+}
+
+impl<V, E> ClientStateExt<V, E> for ClientState
+where
+    V: ClientValidationContext,
+    E: ClientExecutionContext,
+{
+    fn is_frozen(&self) -> bool {
+        self.is_frozen()
     }
 }
 

@@ -5,6 +5,7 @@ use core::fmt::Debug;
 use core::ops::Add;
 use core::time::Duration;
 
+use basecoin_store::context::ProvableStore;
 use ibc::core::client::context::consensus_state::ConsensusState;
 use ibc::core::client::types::Height;
 use ibc::core::primitives::prelude::*;
@@ -24,7 +25,10 @@ pub type HostHeader<H, S> = <HostBlock<H, S> as TestBlock>::Header;
 pub type HostConsensusState<H, S> = <HostHeader<H, S> as TestHeader>::ConsensusState;
 
 /// TestHost is a trait that defines the interface for a host blockchain.
-pub trait TestHost<S>: Default + Debug + Sized {
+pub trait TestHost<S>: Default + Debug + Sized
+where
+    S: ProvableStore + Debug,
+{
     /// The type of block produced by the host.
     type Block: TestBlock;
 

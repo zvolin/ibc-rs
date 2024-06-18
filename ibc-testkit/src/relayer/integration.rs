@@ -166,9 +166,9 @@ mod tests {
     // tests among all the `TestHost` implementations
     #[test]
     fn ibc_integration_test_for_all_pairs() {
-        ibc_integration_test::<MockHost<_>, MockHost<_>>();
-        ibc_integration_test::<MockHost<_>, TendermintHost<_>>();
-        ibc_integration_test::<TendermintHost<_>, MockHost<_>>();
-        ibc_integration_test::<TendermintHost<_>, TendermintHost<_>>();
+        ibc_integration_test::<MockHost, MockHost>();
+        ibc_integration_test::<MockHost, TendermintHost>();
+        ibc_integration_test::<TendermintHost, MockHost>();
+        ibc_integration_test::<TendermintHost, TendermintHost>();
     }
 }

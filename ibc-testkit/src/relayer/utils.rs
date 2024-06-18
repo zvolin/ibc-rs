@@ -12,6 +12,7 @@ use ibc::core::channel::types::msgs::{
 use ibc::core::channel::types::packet::Packet;
 use ibc::core::channel::types::timeout::TimeoutHeight;
 use ibc::core::channel::types::Version as ChannelVersion;
+use ibc::core::client::context::client_state::ClientStateCommon;
 use ibc::core::client::context::ClientValidationContext;
 use ibc::core::client::types::msgs::{ClientMsg, MsgCreateClient, MsgUpdateClient};
 use ibc::core::connection::types::msgs::{
