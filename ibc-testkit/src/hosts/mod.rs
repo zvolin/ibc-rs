@@ -5,8 +5,6 @@ use core::fmt::Debug;
 use core::ops::Add;
 use core::time::Duration;
 
-use basecoin_store::context::ProvableStore;
-use ibc::core::client::context::client_state::ClientState;
 use ibc::core::client::context::consensus_state::ConsensusState;
 use ibc::core::client::types::Height;
 use ibc::core::primitives::prelude::*;
@@ -15,29 +13,21 @@ use ibc::primitives::proto::Any;
 
 pub use self::mock::MockHost;
 pub use self::tendermint::TendermintHost;
-use crate::testapp::ibc::core::types::MockIbcStore;
 
-pub type HostClientState<H, S> = <H as TestHost<S>>::ClientState;
-pub type HostBlock<H, S> = <H as TestHost<S>>::Block;
-pub type HostBlockParams<H, S> = <H as TestHost<S>>::BlockParams;
-pub type HostLightClientParams<H, S> = <H as TestHost<S>>::LightClientParams;
-pub type HostHeader<H, S> = <HostBlock<H, S> as TestBlock>::Header;
-pub type HostConsensusState<H, S> = <HostHeader<H, S> as TestHeader>::ConsensusState;
+pub type HostClientState<H> = <H as TestHost>::ClientState;
+pub type HostBlock<H> = <H as TestHost>::Block;
+pub type HostBlockParams<H> = <H as TestHost>::BlockParams;
+pub type HostLightClientParams<H> = <H as TestHost>::LightClientParams;
+pub type HostHeader<H> = <HostBlock<H> as TestBlock>::Header;
+pub type HostConsensusState<H> = <HostHeader<H> as TestHeader>::ConsensusState;
 
 /// TestHost is a trait that defines the interface for a host blockchain.
-pub trait TestHost<S>: Default + Debug + Sized
-where
-    S: ProvableStore + Debug,
-{
+pub trait TestHost: Default + Debug + Sized {
     /// The type of block produced by the host.
     type Block: TestBlock;
 
     /// The type of client state produced by the host.
-    type ClientState: ClientState<
-            MockIbcStore<S, Self::ClientState, HostConsensusState<Self, S>>,
-            MockIbcStore<S, Self::ClientState, HostConsensusState<Self, S>>,
-        > + Clone
-        + Debug;
+    type ClientState: TryFrom<Any> + Clone + Debug + Send + Sync;
 
     /// The type of block parameter to produce a block.
     type BlockParams: Debug + Default;

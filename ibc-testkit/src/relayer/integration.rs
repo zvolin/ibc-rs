@@ -1,11 +1,13 @@
+use ibc::core::client::context::client_state::ClientState;
 use ibc::core::client::types::error::ClientError;
 use ibc::core::host::types::identifiers::{ChannelId, ConnectionId, PortId};
 use ibc::primitives::proto::Any;
 
-use crate::context::{MockStore, TestContext};
+use crate::context::TestContext;
 use crate::fixtures::core::signer::dummy_account_id;
-use crate::hosts::{HostClientState, TestHost};
+use crate::hosts::{HostClientState, HostConsensusState, TestHost};
 use crate::relayer::context::RelayerContext;
+use crate::testapp::ibc::core::types::DefaultIbcStore;
 
 /// Integration test for IBC implementation. This test creates clients,
 /// connections, channels between two [`TestHost`]s.
@@ -15,10 +17,18 @@ use crate::relayer::context::RelayerContext;
 /// to simulate the transfer of tokens between two contexts.
 pub fn ibc_integration_test<A, B>()
 where
-    A: TestHost<MockStore>,
-    B: TestHost<MockStore>,
-    <HostClientState<A, MockStore> as TryFrom<Any>>::Error: Into<ClientError>,
-    <HostClientState<B, MockStore> as TryFrom<Any>>::Error: Into<ClientError>,
+    A: TestHost,
+    B: TestHost,
+    HostClientState<A>: ClientState<
+        DefaultIbcStore<A::ClientState, HostConsensusState<A>>,
+        DefaultIbcStore<A::ClientState, HostConsensusState<A>>,
+    >,
+    HostClientState<B>: ClientState<
+        DefaultIbcStore<B::ClientState, HostConsensusState<B>>,
+        DefaultIbcStore<B::ClientState, HostConsensusState<B>>,
+    >,
+    <HostClientState<A> as TryFrom<Any>>::Error: Into<ClientError>,
+    <HostClientState<B> as TryFrom<Any>>::Error: Into<ClientError>,
 {
     let ctx_a = TestContext::<A>::default();
     let ctx_b = TestContext::<B>::default();

@@ -5,6 +5,7 @@ use basecoin_store::context::ProvableStore;
 use basecoin_store::impls::InMemoryStore;
 use ibc::core::channel::types::channel::ChannelEnd;
 use ibc::core::channel::types::commitment::PacketCommitment;
+use ibc::core::client::context::client_state::ClientState;
 use ibc::core::client::context::ClientExecutionContext;
 use ibc::core::client::types::error::ClientError;
 use ibc::core::client::types::Height;
@@ -37,8 +38,12 @@ use crate::testapp::ibc::core::types::DEFAULT_BLOCK_TIME_SECS;
 pub struct StoreGenericTestContext<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost<S>,
-    <HostClientState<H, S> as TryFrom<Any>>::Error: Into<ClientError>,
+    H: TestHost,
+    HostClientState<H>: ClientState<
+        MockIbcStore<S, H::ClientState, HostConsensusState<H>>,
+        MockIbcStore<S, H::ClientState, HostConsensusState<H>>,
+    >,
+    <HostClientState<H> as TryFrom<Any>>::Error: Into<ClientError>,
 {
     /// The multi store of the context.
     /// This is where the IBC store root is stored at IBC commitment prefix.
@@ -48,7 +53,7 @@ where
     pub host: H,
 
     /// An object that stores all IBC related data.
-    pub ibc_store: MockIbcStore<S, H::ClientState, HostConsensusState<H, S>>,
+    pub ibc_store: MockIbcStore<S, H::ClientState, HostConsensusState<H>>,
 
     /// A router that can route messages to the appropriate IBC application.
     pub ibc_router: MockRouter,
@@ -69,8 +74,12 @@ pub type TendermintContext = TestContext<TendermintHost>;
 impl<S, H> Default for StoreGenericTestContext<S, H>
 where
     S: ProvableStore + Debug + Default,
-    H: TestHost<S>,
-    <HostClientState<H, S> as TryFrom<Any>>::Error: Into<ClientError>,
+    H: TestHost,
+    HostClientState<H>: ClientState<
+        MockIbcStore<S, H::ClientState, HostConsensusState<H>>,
+        MockIbcStore<S, H::ClientState, HostConsensusState<H>>,
+    >,
+    <HostClientState<H> as TryFrom<Any>>::Error: Into<ClientError>,
 {
     fn default() -> Self {
         TestContextConfig::builder().build()
@@ -82,18 +91,20 @@ where
 impl<S, H> StoreGenericTestContext<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost<S>,
-    <HostClientState<H, S> as TryFrom<Any>>::Error: Into<ClientError>,
+    H: TestHost,
+    HostClientState<H>: ClientState<
+        MockIbcStore<S, H::ClientState, HostConsensusState<H>>,
+        MockIbcStore<S, H::ClientState, HostConsensusState<H>>,
+    >,
+    <HostClientState<H> as TryFrom<Any>>::Error: Into<ClientError>,
 {
     /// Returns an immutable reference to the IBC store.
-    pub fn ibc_store(&self) -> &MockIbcStore<S, H::ClientState, HostConsensusState<H, S>> {
+    pub fn ibc_store(&self) -> &MockIbcStore<S, H::ClientState, HostConsensusState<H>> {
         &self.ibc_store
     }
 
     /// Returns a mutable reference to the IBC store.
-    pub fn ibc_store_mut(
-        &mut self,
-    ) -> &mut MockIbcStore<S, H::ClientState, HostConsensusState<H, S>> {
+    pub fn ibc_store_mut(&mut self) -> &mut MockIbcStore<S, H::ClientState, HostConsensusState<H>> {
         &mut self.ibc_store
     }
 
@@ -291,7 +302,7 @@ where
         mut self,
         client_id: &ClientId,
         height: Height,
-        consensus_state: HostConsensusState<H, S>,
+        consensus_state: HostConsensusState<H>,
     ) -> Self {
         let consensus_state_path = ClientConsensusStatePath::new(
             client_id.clone(),
@@ -312,7 +323,7 @@ where
         &self,
         mut consensus_heights: Vec<Height>,
         client_params: &H::LightClientParams,
-    ) -> LightClientState<H, S> {
+    ) -> LightClientState<H> {
         let client_height = if let Some(&height) = consensus_heights.last() {
             height
         } else {
@@ -347,10 +358,10 @@ where
     pub fn with_light_client<RH>(
         mut self,
         client_id: &ClientId,
-        light_client: LightClientState<RH, S>,
+        light_client: LightClientState<RH>,
     ) -> Self
     where
-        RH: TestHost<S, ClientState = H::ClientState, Block = H::Block>,
+        RH: TestHost<ClientState = H::ClientState, Block = H::Block>,
     {
         self = self.with_client_state(client_id, light_client.client_state);
 

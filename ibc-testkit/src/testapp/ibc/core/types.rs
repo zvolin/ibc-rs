@@ -206,18 +206,19 @@ where
     }
 }
 
-pub struct LightClientState<H: TestHost<S>, S>
-where
-    S: ProvableStore + Debug,
-{
+pub struct LightClientState<H: TestHost> {
     pub client_state: H::ClientState,
-    pub consensus_states: BTreeMap<Height, HostConsensusState<H, S>>,
+    pub consensus_states: BTreeMap<Height, HostConsensusState<H>>,
 }
 
-impl<H> Default for LightClientState<H, MockStore>
+impl<H> Default for LightClientState<H>
 where
-    H: TestHost<MockStore>,
-    <HostClientState<H, MockStore> as TryFrom<Any>>::Error: Into<ClientError>,
+    H: TestHost,
+    H::ClientState: ClientState<
+        MockIbcStore<MockStore, H::ClientState, HostConsensusState<H>>,
+        MockIbcStore<MockStore, H::ClientState, HostConsensusState<H>>,
+    >,
+    <HostClientState<H> as TryFrom<Any>>::Error: Into<ClientError>,
 {
     fn default() -> Self {
         let context = TestContext::<H>::default();
@@ -225,10 +226,14 @@ where
     }
 }
 
-impl<H> LightClientState<H, MockStore>
+impl<H> LightClientState<H>
 where
-    H: TestHost<MockStore>,
-    <HostClientState<H, MockStore> as TryFrom<Any>>::Error: Into<ClientError>,
+    H: TestHost,
+    H::ClientState: ClientState<
+        MockIbcStore<MockStore, H::ClientState, HostConsensusState<H>>,
+        MockIbcStore<MockStore, H::ClientState, HostConsensusState<H>>,
+    >,
+    <HostClientState<H> as TryFrom<Any>>::Error: Into<ClientError>,
 {
     pub fn with_latest_height(height: Height) -> Self {
         let context = TestContextConfig::builder()
@@ -242,8 +247,12 @@ where
 #[builder(builder_method(name = init), build_method(into))]
 pub struct LightClientBuilder<'a, H>
 where
-    H: TestHost<MockStore> + 'a,
-    <HostClientState<H, MockStore> as TryFrom<Any>>::Error: Into<ClientError>,
+    H: TestHost + 'a,
+    H::ClientState: ClientState<
+        MockIbcStore<MockStore, H::ClientState, HostConsensusState<H>>,
+        MockIbcStore<MockStore, H::ClientState, HostConsensusState<H>>,
+    >,
+    <HostClientState<H> as TryFrom<Any>>::Error: Into<ClientError>,
 {
     context: &'a TestContext<H>,
     #[builder(default, setter(into))]
@@ -252,10 +261,14 @@ where
     params: H::LightClientParams,
 }
 
-impl<'a, H> From<LightClientBuilder<'a, H>> for LightClientState<H, MockStore>
+impl<'a, H> From<LightClientBuilder<'a, H>> for LightClientState<H>
 where
-    H: TestHost<MockStore> + 'a,
-    <HostClientState<H, MockStore> as TryFrom<Any>>::Error: Into<ClientError>,
+    H: TestHost + 'a,
+    H::ClientState: ClientState<
+        MockIbcStore<MockStore, H::ClientState, HostConsensusState<H>>,
+        MockIbcStore<MockStore, H::ClientState, HostConsensusState<H>>,
+    >,
+    <HostClientState<H> as TryFrom<Any>>::Error: Into<ClientError>,
 {
     fn from(builder: LightClientBuilder<'a, H>) -> Self {
         let LightClientBuilder {

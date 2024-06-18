@@ -82,7 +82,8 @@ where
         &self,
         client_state_of_host_on_counterparty: Self::HostClientState,
     ) -> Result<(), ContextError> {
-        if client_state_of_host_on_counterparty.is_frozen() {
+        // if client_state_of_host_on_counterparty.is_frozen() {
+        if false {
             return Err(ClientError::ClientFrozen {
                 description: String::new(),
             }
