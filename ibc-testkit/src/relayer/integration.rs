@@ -1,11 +1,9 @@
-use ibc::core::client::context::client_state::ClientStateValidation;
 use ibc::core::host::types::identifiers::{ChannelId, ConnectionId, PortId};
 
-use crate::context::TestContext;
+use crate::context::{MockStore, TestContext};
 use crate::fixtures::core::signer::dummy_account_id;
-use crate::hosts::{HostClientState, TestHost};
+use crate::hosts::TestHost;
 use crate::relayer::context::RelayerContext;
-use crate::testapp::ibc::core::types::DefaultIbcStore;
 
 /// Integration test for IBC implementation. This test creates clients,
 /// connections, channels between two [`TestHost`]s.
@@ -15,10 +13,8 @@ use crate::testapp::ibc::core::types::DefaultIbcStore;
 /// to simulate the transfer of tokens between two contexts.
 pub fn ibc_integration_test<A, B>()
 where
-    A: TestHost<DefaultIbcStore>,
-    B: TestHost<DefaultIbcStore>,
-    HostClientState<A>: ClientStateValidation<DefaultIbcStore>,
-    HostClientState<B>: ClientStateValidation<DefaultIbcStore>,
+    A: TestHost<MockStore>,
+    B: TestHost<MockStore>,
 {
     let ctx_a = TestContext::<A>::default();
     let ctx_b = TestContext::<B>::default();
@@ -170,9 +166,9 @@ mod tests {
     // tests among all the `TestHost` implementations
     #[test]
     fn ibc_integration_test_for_all_pairs() {
-        ibc_integration_test::<MockHost, MockHost>();
-        ibc_integration_test::<MockHost, TendermintHost>();
-        ibc_integration_test::<TendermintHost, MockHost>();
-        ibc_integration_test::<TendermintHost, TendermintHost>();
+        ibc_integration_test::<MockHost<_>, MockHost<_>>();
+        ibc_integration_test::<MockHost<_>, TendermintHost<_>>();
+        ibc_integration_test::<TendermintHost<_>, MockHost<_>>();
+        ibc_integration_test::<TendermintHost<_>, TendermintHost<_>>();
     }
 }

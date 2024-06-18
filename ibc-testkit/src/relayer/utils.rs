@@ -12,7 +12,6 @@ use ibc::core::channel::types::msgs::{
 use ibc::core::channel::types::packet::Packet;
 use ibc::core::channel::types::timeout::TimeoutHeight;
 use ibc::core::channel::types::Version as ChannelVersion;
-use ibc::core::client::context::client_state::ClientStateValidation;
 use ibc::core::client::context::ClientValidationContext;
 use ibc::core::client::types::msgs::{ClientMsg, MsgCreateClient, MsgUpdateClient};
 use ibc::core::connection::types::msgs::{
@@ -32,9 +31,9 @@ use ibc::core::host::ValidationContext;
 use ibc::primitives::Signer;
 use ibc_query::core::context::ProvableContext;
 
-use crate::context::TestContext;
-use crate::hosts::{HostClientState, TestBlock, TestHost};
-use crate::testapp::ibc::core::types::{DefaultIbcStore, LightClientBuilder, LightClientState};
+use crate::context::{MockStore, TestContext};
+use crate::hosts::{TestBlock, TestHost};
+use crate::testapp::ibc::core::types::{LightClientBuilder, LightClientState};
 
 /// Implements IBC relayer functions for a pair of [`TestHost`] implementations: `A` and `B`.
 /// Note that, all the implementations are in one direction: from `A` to `B`.
@@ -45,17 +44,13 @@ use crate::testapp::ibc::core::types::{DefaultIbcStore, LightClientBuilder, Ligh
 #[derive(Debug, Default)]
 pub struct TypedRelayerOps<A, B>(PhantomData<A>, PhantomData<B>)
 where
-    A: TestHost,
-    B: TestHost,
-    HostClientState<A>: ClientStateValidation<DefaultIbcStore>,
-    HostClientState<B>: ClientStateValidation<DefaultIbcStore>;
+    A: TestHost<MockStore>,
+    B: TestHost<MockStore>;
 
 impl<A, B> TypedRelayerOps<A, B>
 where
-    A: TestHost,
-    B: TestHost,
-    HostClientState<A>: ClientStateValidation<DefaultIbcStore>,
-    HostClientState<B>: ClientStateValidation<DefaultIbcStore>,
+    A: TestHost<MockStore>,
+    B: TestHost<MockStore>,
 {
     /// Creates a client on `A` with the state of `B`.
     /// Returns the client identifier on `A`.
@@ -66,7 +61,7 @@ where
     ) -> ClientId {
         let light_client_of_b = LightClientBuilder::init()
             .context(ctx_b)
-            .build::<LightClientState<B>>();
+            .build::<LightClientState<B, _>>();
 
         let msg_for_a = MsgEnvelope::Client(ClientMsg::CreateClient(MsgCreateClient {
             client_state: light_client_of_b.client_state.into(),

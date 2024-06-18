@@ -5,9 +5,7 @@ use basecoin_store::context::ProvableStore;
 use basecoin_store::impls::InMemoryStore;
 use ibc::core::channel::types::channel::ChannelEnd;
 use ibc::core::channel::types::commitment::PacketCommitment;
-use ibc::core::client::context::client_state::ClientStateValidation;
 use ibc::core::client::context::ClientExecutionContext;
-use ibc::core::client::types::error::ClientError;
 use ibc::core::client::types::Height;
 use ibc::core::connection::types::ConnectionEnd;
 use ibc::core::entrypoint::{dispatch, execute, validate};
@@ -21,14 +19,11 @@ use ibc::core::host::types::path::{
 };
 use ibc::core::host::{ExecutionContext, ValidationContext};
 use ibc::primitives::prelude::*;
-use ibc::primitives::proto::Any;
 use ibc::primitives::Timestamp;
 
 use super::testapp::ibc::core::types::{LightClientState, MockIbcStore};
 use crate::fixtures::core::context::TestContextConfig;
-use crate::hosts::{
-    HostClientState, HostConsensusState, MockHost, TendermintHost, TestBlock, TestHeader, TestHost,
-};
+use crate::hosts::{HostConsensusState, MockHost, TendermintHost, TestBlock, TestHeader, TestHost};
 use crate::relayer::error::RelayerError;
 use crate::testapp::ibc::core::router::MockRouter;
 use crate::testapp::ibc::core::types::DEFAULT_BLOCK_TIME_SECS;
@@ -39,9 +34,6 @@ pub struct StoreGenericTestContext<S, H>
 where
     S: ProvableStore + Debug,
     H: TestHost<S>,
-    HostClientState<H, S>:
-        ClientStateValidation<MockIbcStore<S, H::ClientState, HostConsensusState<H, S>>>,
-    <HostClientState<H, S> as TryFrom<Any>>::Error: Into<ClientError>,
 {
     /// The multi store of the context.
     /// This is where the IBC store root is stored at IBC commitment prefix.
@@ -73,9 +65,6 @@ impl<S, H> Default for StoreGenericTestContext<S, H>
 where
     S: ProvableStore + Debug + Default,
     H: TestHost<S>,
-    HostClientState<H, S>:
-        ClientStateValidation<MockIbcStore<S, H::ClientState, HostConsensusState<H, S>>>,
-    <HostClientState<H, S> as TryFrom<Any>>::Error: Into<ClientError>,
 {
     fn default() -> Self {
         TestContextConfig::builder().build()
@@ -88,9 +77,6 @@ impl<S, H> StoreGenericTestContext<S, H>
 where
     S: ProvableStore + Debug,
     H: TestHost<S>,
-    HostClientState<H, S>:
-        ClientStateValidation<MockIbcStore<S, H::ClientState, HostConsensusState<H, S>>>,
-    <HostClientState<H, S> as TryFrom<Any>>::Error: Into<ClientError>,
 {
     /// Returns an immutable reference to the IBC store.
     pub fn ibc_store(&self) -> &MockIbcStore<S, H::ClientState, HostConsensusState<H, S>> {

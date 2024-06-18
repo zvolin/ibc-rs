@@ -19,6 +19,7 @@ use crate::testapp::ibc::clients::mock::consensus_state::MockConsensusState;
 use crate::testapp::ibc::clients::mock::header::{MockHeader, MOCK_HEADER_TYPE_URL};
 use crate::testapp::ibc::clients::mock::misbehaviour::{Misbehaviour, MOCK_MISBEHAVIOUR_TYPE_URL};
 use crate::testapp::ibc::clients::mock::proto::ClientState as RawMockClientState;
+use crate::testapp::ibc::clients::ClientStateExt;
 
 pub const MOCK_CLIENT_STATE_TYPE_URL: &str = "/ibc.mock.ClientState";
 pub const MOCK_CLIENT_TYPE: &str = "9999-mock";
@@ -476,6 +477,16 @@ where
         )?;
 
         Ok(())
+    }
+}
+
+impl<V, E> ClientStateExt<V, E> for MockClientState
+where
+    V: ClientValidationContext + MockClientContext,
+    E: ClientExecutionContext + MockClientContext,
+{
+    fn is_frozen(&self) -> bool {
+        self.is_frozen()
     }
 }
 

@@ -2,10 +2,11 @@ use alloc::fmt::Debug;
 use core::time::Duration;
 
 use basecoin_store::context::ProvableStore;
-use ibc::core::client::context::client_state::ClientStateValidation;
+use ibc::core::client::types::error::ClientError;
 use ibc::core::client::types::Height;
 use ibc::core::primitives::prelude::*;
 use ibc::core::primitives::Timestamp;
+use ibc::primitives::proto::Any;
 use typed_builder::TypedBuilder;
 
 use crate::context::StoreGenericTestContext;
@@ -17,9 +18,9 @@ use crate::utils::year_2023;
 /// Configuration of the [`StoreGenericTestContext`] type for generating dummy contexts.
 #[derive(Debug, TypedBuilder)]
 #[builder(build_method(into))]
-pub struct TestContextConfig<H>
+pub struct TestContextConfig<S, H>
 where
-    H: TestHost,
+    H: TestHost<S>,
 {
     #[builder(default)]
     host: H,
@@ -37,13 +38,13 @@ where
     latest_height: Height,
 }
 
-impl<S, H> From<TestContextConfig<H>> for StoreGenericTestContext<S, H>
+impl<S, H> From<TestContextConfig<S, H>> for StoreGenericTestContext<S, H>
 where
     S: ProvableStore + Debug + Default,
-    H: TestHost,
-    HostClientState<H>: ClientStateValidation<MockIbcStore<S>>,
+    H: TestHost<S>,
+    <HostClientState<H, S> as TryFrom<Any>>::Error: Into<ClientError>,
 {
-    fn from(params: TestContextConfig<H>) -> Self {
+    fn from(params: TestContextConfig<S, H>) -> Self {
         assert_ne!(
             params.latest_height.revision_height(),
             0,

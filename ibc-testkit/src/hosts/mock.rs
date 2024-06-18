@@ -26,7 +26,7 @@ impl Default for MockHost {
     }
 }
 
-impl TestHost for MockHost {
+impl<S> TestHost<S> for MockHost {
     type Block = MockHeader;
     type ClientState = MockClientState;
     type BlockParams = ();

@@ -5,7 +5,6 @@ use core::fmt::Debug;
 use core::ops::Add;
 use core::time::Duration;
 
-use ibc::core::client::context::client_state::ClientState;
 use ibc::core::client::context::consensus_state::ConsensusState;
 use ibc::core::client::types::Height;
 use ibc::core::primitives::prelude::*;
@@ -14,6 +13,7 @@ use ibc::primitives::proto::Any;
 
 pub use self::mock::MockHost;
 pub use self::tendermint::TendermintHost;
+use crate::testapp::ibc::clients::ClientStateExt;
 use crate::testapp::ibc::core::types::MockIbcStore;
 
 pub type HostClientState<H, S> = <H as TestHost<S>>::ClientState;
@@ -29,7 +29,7 @@ pub trait TestHost<S>: Default + Debug + Sized {
     type Block: TestBlock;
 
     /// The type of client state produced by the host.
-    type ClientState: ClientState<
+    type ClientState: ClientStateExt<
             MockIbcStore<S, Self::ClientState, HostConsensusState<Self, S>>,
             MockIbcStore<S, Self::ClientState, HostConsensusState<Self, S>>,
         > + Clone

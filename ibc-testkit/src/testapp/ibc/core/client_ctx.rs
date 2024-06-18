@@ -20,26 +20,26 @@ use ibc::primitives::prelude::*;
 
 use super::types::MockIbcStore;
 use crate::testapp::ibc::clients::mock::client_state::MockClientContext;
-use crate::testapp::ibc::clients::{AnyClientState, AnyConsensusState};
+use crate::testapp::ibc::clients::ClientStateExt;
 
 pub type PortChannelIdMap<V> = BTreeMap<PortId, BTreeMap<ChannelId, V>>;
 
 /// A mock of an IBC client record as it is stored in a mock context.
 /// For testing ICS02 handlers mostly, cf. `MockClientContext`.
-#[derive(Clone, Debug)]
-pub struct MockClientRecord {
-    /// The client state (representing only the latest height at the moment).
-    pub client_state: Option<AnyClientState>,
+// #[derive(Clone, Debug)]
+// pub struct MockClientRecord {
+//     /// The client state (representing only the latest height at the moment).
+//     pub client_state: Option<AnyClientState>,
 
-    /// Mapping of heights to consensus states for this client.
-    pub consensus_states: BTreeMap<Height, AnyConsensusState>,
-}
+//     /// Mapping of heights to consensus states for this client.
+//     pub consensus_states: BTreeMap<Height, AnyConsensusState>,
+// }
 
 impl<S, AnyClientState, AnyConsensusState> MockClientContext
     for MockIbcStore<S, AnyClientState, AnyConsensusState>
 where
     S: ProvableStore + Debug,
-    AnyClientState: ClientState<Self, Self> + Clone,
+    AnyClientState: ClientStateExt<Self, Self> + Clone,
     AnyConsensusState: ConsensusState + Clone,
 {
     fn host_timestamp(&self) -> Result<Timestamp, ContextError> {
@@ -55,7 +55,7 @@ impl<S, AnyClientState, AnyConsensusState> ExtClientValidationContext
     for MockIbcStore<S, AnyClientState, AnyConsensusState>
 where
     S: ProvableStore + Debug,
-    AnyClientState: ClientState<Self, Self> + Clone,
+    AnyClientState: ClientStateExt<Self, Self> + Clone,
     AnyConsensusState: ConsensusState + Clone,
 {
     fn host_timestamp(&self) -> Result<Timestamp, ContextError> {

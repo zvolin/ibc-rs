@@ -39,7 +39,7 @@ impl Default for TendermintHost {
     }
 }
 
-impl TestHost for TendermintHost {
+impl<S> TestHost<S> for TendermintHost {
     type Block = TmLightBlock;
     type BlockParams = BlockParams;
     type LightClientParams = ClientStateConfig;

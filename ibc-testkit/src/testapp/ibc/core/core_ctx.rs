@@ -32,13 +32,15 @@ use ibc::primitives::ToVec;
 use ibc_proto::ibc::core::commitment::v1::MerkleProof as RawMerkleProof;
 use ibc_query::core::context::{ProvableContext, QueryContext};
 
+use crate::testapp::ibc::clients::ClientStateExt;
+
 use super::types::{MockIbcStore, DEFAULT_BLOCK_TIME_SECS};
 
 impl<S, AnyClientState, AnyConsensusState> ValidationContext
     for MockIbcStore<S, AnyClientState, AnyConsensusState>
 where
     S: ProvableStore + Debug,
-    AnyClientState: ClientState<Self, Self> + Clone,
+    AnyClientState: ClientStateExt<Self, Self> + Clone,
     AnyConsensusState: ConsensusState + Clone,
 {
     type V = Self;
@@ -304,7 +306,7 @@ impl<S, AnyClientState, AnyConsensusState> QueryContext
     for MockIbcStore<S, AnyClientState, AnyConsensusState>
 where
     S: ProvableStore + Debug,
-    AnyClientState: ClientState<Self, Self> + Clone,
+    AnyClientState: ClientStateExt<Self, Self> + Clone,
     AnyConsensusState: ConsensusState + Clone,
 {
     /// Returns the list of all client states.
@@ -649,7 +651,7 @@ impl<S, AnyClientState, AnyConsensusState> ExecutionContext
     for MockIbcStore<S, AnyClientState, AnyConsensusState>
 where
     S: ProvableStore + Debug,
-    AnyClientState: ClientState<Self, Self> + Clone,
+    AnyClientState: ClientStateExt<Self, Self> + Clone,
     AnyConsensusState: ConsensusState + Clone,
 {
     type E = Self;
