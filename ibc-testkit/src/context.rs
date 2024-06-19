@@ -23,11 +23,12 @@ use ibc::primitives::Timestamp;
 
 use super::testapp::ibc::core::types::{LightClientState, MockIbcStore};
 use crate::fixtures::core::context::TestContextConfig;
-use crate::hosts::{HostConsensusState, MockHost, TendermintHost, TestBlock, TestHeader, TestHost};
+use crate::hosts::{MockHost, TendermintHost, TestBlock, TestHeader, TestHost};
 use crate::relayer::error::RelayerError;
 use crate::testapp::ibc::core::router::MockRouter;
 use crate::testapp::ibc::core::types::{
-    HostClientStateWithStore, LightClientStateWithStore, DEFAULT_BLOCK_TIME_SECS,
+    HostClientStateWithStore, HostConsensusStateWithStore, LightClientStateWithStore,
+    DEFAULT_BLOCK_TIME_SECS,
 };
 
 /// A context implementing the dependencies necessary for testing any IBC module.
@@ -35,7 +36,7 @@ use crate::testapp::ibc::core::types::{
 pub struct StoreGenericTestContext<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost,
+    H: TestHost<MockIbcStore<S, H>, MockIbcStore<S, H>>,
 {
     /// The multi store of the context.
     /// This is where the IBC store root is stored at IBC commitment prefix.
@@ -66,7 +67,7 @@ pub type TendermintContext = TestContext<TendermintHost>;
 impl<S, H> Default for StoreGenericTestContext<S, H>
 where
     S: ProvableStore + Debug + Default,
-    H: TestHost,
+    H: TestHost<MockIbcStore<S, H>, MockIbcStore<S, H>>,
 {
     fn default() -> Self {
         TestContextConfig::builder().build()
@@ -78,7 +79,7 @@ where
 impl<S, H> StoreGenericTestContext<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost,
+    H: TestHost<MockIbcStore<S, H>, MockIbcStore<S, H>>,
 {
     /// Returns an immutable reference to the IBC store.
     pub fn ibc_store(&self) -> &MockIbcStore<S, H> {
@@ -288,7 +289,7 @@ where
         mut self,
         client_id: &ClientId,
         height: Height,
-        consensus_state: HostConsensusState<H>,
+        consensus_state: HostConsensusStateWithStore<S, H>,
     ) -> Self {
         let consensus_state_path = ClientConsensusStatePath::new(
             client_id.clone(),

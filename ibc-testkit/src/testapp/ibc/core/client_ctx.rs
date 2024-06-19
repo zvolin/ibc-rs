@@ -36,7 +36,7 @@ pub type PortChannelIdMap<V> = BTreeMap<PortId, BTreeMap<ChannelId, V>>;
 impl<S, H> MockClientContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost,
+    H: TestHost<Self, Self>,
 {
     fn host_timestamp(&self) -> Result<Timestamp, ContextError> {
         ValidationContext::host_timestamp(self)
@@ -50,7 +50,7 @@ where
 impl<S, H> ExtClientValidationContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost,
+    H: TestHost<Self, Self>,
 {
     fn host_timestamp(&self) -> Result<Timestamp, ContextError> {
         ValidationContext::host_timestamp(self)
@@ -157,10 +157,10 @@ where
 impl<S, H> ClientValidationContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost,
+    H: TestHost<Self, Self>,
 {
     type ClientStateRef = HostClientState<H, Self, Self>;
-    type ConsensusStateRef = HostConsensusState<H>;
+    type ConsensusStateRef = HostConsensusState<H, Self, Self>;
 
     fn client_state(&self, client_id: &ClientId) -> Result<Self::ClientStateRef, ContextError> {
         Ok(self
@@ -230,7 +230,7 @@ where
 impl<S, H> ClientExecutionContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost,
+    H: TestHost<Self, Self>,
 {
     type ClientStateMut = HostClientState<H, Self, Self>;
 

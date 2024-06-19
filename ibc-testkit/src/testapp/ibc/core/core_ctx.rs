@@ -39,11 +39,11 @@ use super::types::{MockIbcStore, DEFAULT_BLOCK_TIME_SECS};
 impl<S, H> ValidationContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost,
+    H: TestHost<Self, Self>,
 {
     type V = Self;
     type HostClientState = HostClientState<H, Self, Self>;
-    type HostConsensusState = HostConsensusState<H>;
+    type HostConsensusState = HostConsensusState<H, Self, Self>;
 
     fn host_height(&self) -> Result<Height, ContextError> {
         Ok(Height::new(
@@ -276,7 +276,7 @@ where
 impl<S, H> ProvableContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost,
+    H: TestHost<Self, Self>,
 {
     /// Returns the proof for the given [`Height`] and [`Path`]
     fn get_proof(&self, height: Height, path: &Path) -> Option<Vec<u8>> {
@@ -302,7 +302,7 @@ where
 impl<S, H> QueryContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost,
+    H: TestHost<Self, Self>,
 {
     /// Returns the list of all client states.
     fn client_states(&self) -> Result<Vec<(ClientId, ClientStateRef<Self>)>, ContextError> {
@@ -645,7 +645,7 @@ where
 impl<S, H> ExecutionContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost,
+    H: TestHost<Self, Self>,
 {
     type E = Self;
 

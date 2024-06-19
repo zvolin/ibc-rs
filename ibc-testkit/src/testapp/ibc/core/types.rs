@@ -2,7 +2,7 @@
 
 use alloc::sync::Arc;
 use core::fmt::Debug;
-use ibc::core::client::context::{ExtClientExecutionContext, ExtClientValidationContext};
+use ibc::core::client::context::{ClientExecutionContext, ClientValidationContext};
 
 use basecoin_store::context::{ProvableStore, Store};
 use basecoin_store::impls::SharedStore;
@@ -37,8 +37,11 @@ use crate::testapp::ibc::clients::mock::header::MockHeader;
 pub const DEFAULT_BLOCK_TIME_SECS: u64 = 3;
 
 pub type DefaultIbcStore<H> = MockIbcStore<MockStore, H>;
+
 pub type HostClientStateWithStore<S, H> =
     HostClientState<H, MockIbcStore<S, H>, MockIbcStore<S, H>>;
+pub type HostConsensusStateWithStore<S, H> =
+    HostConsensusState<H, MockIbcStore<S, H>, MockIbcStore<S, H>>;
 pub type LightClientStateWithStore<S, H> =
     LightClientState<H, MockIbcStore<S, H>, MockIbcStore<S, H>>;
 
@@ -47,7 +50,7 @@ pub type LightClientStateWithStore<S, H> =
 pub struct MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost,
+    H: TestHost<Self, Self>,
 {
     /// chain revision number,
     pub revision_number: Arc<Mutex<u64>>,
@@ -70,8 +73,12 @@ where
     pub client_state_store:
         ProtobufStore<SharedStore<S>, ClientStatePath, HostClientState<H, Self, Self>, Any>,
     /// A typed-store for AnyConsensusState
-    pub consensus_state_store:
-        ProtobufStore<SharedStore<S>, ClientConsensusStatePath, HostConsensusState<H>, Any>,
+    pub consensus_state_store: ProtobufStore<
+        SharedStore<S>,
+        ClientConsensusStatePath,
+        HostConsensusState<H, Self, Self>,
+        Any,
+    >,
     /// A typed-store for ConnectionEnd
     pub connection_end_store:
         ProtobufStore<SharedStore<S>, ConnectionPath, ConnectionEnd, RawConnectionEnd>,
@@ -92,7 +99,7 @@ where
     /// A typed-store for packet ack
     pub packet_ack_store: BinStore<SharedStore<S>, AckPath, AcknowledgementCommitment>,
     /// Map of host consensus states
-    pub host_consensus_states: Arc<Mutex<BTreeMap<u64, HostConsensusState<H>>>>,
+    pub host_consensus_states: Arc<Mutex<BTreeMap<u64, HostConsensusState<H, Self, Self>>>>,
     /// Map of older ibc commitment proofs
     pub ibc_commiment_proofs: Arc<Mutex<BTreeMap<u64, CommitmentProof>>>,
     /// IBC Events
@@ -104,7 +111,7 @@ where
 impl<S, H> MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost,
+    H: TestHost<Self, Self>,
 {
     pub fn new(revision_number: u64, store: S) -> Self {
         let shared_store = SharedStore::new(store);
@@ -151,7 +158,11 @@ where
         }
     }
 
-    fn store_host_consensus_state(&mut self, height: u64, consensus_state: HostConsensusState<H>) {
+    fn store_host_consensus_state(
+        &mut self,
+        height: u64,
+        consensus_state: HostConsensusState<H, Self, Self>,
+    ) {
         self.host_consensus_states
             .lock()
             .insert(height, consensus_state);
@@ -164,7 +175,7 @@ where
     pub fn begin_block(
         &mut self,
         height: u64,
-        consensus_state: HostConsensusState<H>,
+        consensus_state: HostConsensusState<H, Self, Self>,
         proof: CommitmentProof,
     ) {
         assert_eq!(self.store.current_height(), height);
@@ -188,8 +199,8 @@ where
 impl<S, H> Default for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug + Default,
-    H: TestHost,
-    HostConsensusState<H>: From<MockConsensusState>,
+    H: TestHost<Self, Self>,
+    HostConsensusState<H, Self, Self>: From<MockConsensusState>,
 {
     fn default() -> Self {
         // Note: this creates a MockIbcStore which has MockConsensusState as Host ConsensusState
@@ -209,18 +220,17 @@ where
 
 pub struct LightClientState<H, V, E>
 where
-    H: TestHost,
-    V: ExtClientValidationContext,
-    V::ConsensusStateRef: From<HostConsensusState<H>> + Into<HostConsensusState<H>>,
-    E: ExtClientExecutionContext,
+    H: TestHost<V, E>,
+    V: ClientValidationContext,
+    E: ClientExecutionContext,
 {
     pub client_state: HostClientState<H, V, E>,
-    pub consensus_states: BTreeMap<Height, HostConsensusState<H>>,
+    pub consensus_states: BTreeMap<Height, HostConsensusState<H, V, E>>,
 }
 
 impl<H> Default for LightClientStateWithStore<MockStore, H>
 where
-    H: TestHost,
+    H: TestHost<DefaultIbcStore<H>, DefaultIbcStore<H>>,
 {
     fn default() -> Self {
         let context = TestContext::<H>::default();
@@ -230,7 +240,7 @@ where
 
 impl<H> LightClientStateWithStore<MockStore, H>
 where
-    H: TestHost,
+    H: TestHost<DefaultIbcStore<H>, DefaultIbcStore<H>>,
 {
     pub fn with_latest_height(height: Height) -> Self {
         let context = TestContextConfig::builder()
@@ -244,7 +254,7 @@ where
 #[builder(builder_method(name = init), build_method(into))]
 pub struct LightClientBuilder<'a, H>
 where
-    H: TestHost,
+    H: TestHost<DefaultIbcStore<H>, DefaultIbcStore<H>>,
 {
     context: &'a TestContext<H>,
     #[builder(default, setter(into))]
@@ -255,7 +265,7 @@ where
 
 impl<'a, H> From<LightClientBuilder<'a, H>> for LightClientStateWithStore<MockStore, H>
 where
-    H: TestHost + 'a,
+    H: TestHost<DefaultIbcStore<H>, DefaultIbcStore<H>> + 'a,
 {
     fn from(builder: LightClientBuilder<'a, H>) -> Self {
         let LightClientBuilder {

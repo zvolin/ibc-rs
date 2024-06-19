@@ -28,10 +28,7 @@ impl Default for MockHost {
     }
 }
 
-impl<S> TestHost<S> for MockHost
-where
-    S: ProvableStore + Debug,
-{
+impl<V, E> TestHost<V, E> for MockHost {
     type Block = MockHeader;
     type ClientState = MockClientState;
     type BlockParams = ();

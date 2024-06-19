@@ -5,11 +5,14 @@ use basecoin_store::context::ProvableStore;
 use ibc::clients::tendermint::client_state::ClientState;
 use ibc::clients::tendermint::consensus_state::ConsensusState;
 use ibc::clients::tendermint::types::proto::v1::Header as RawHeader;
-use ibc::clients::tendermint::types::{Header, TENDERMINT_HEADER_TYPE_URL};
-use ibc::core::client::context::{
-    ClientExecutionContext, ClientValidationContext, ExtClientExecutionContext,
-    ExtClientValidationContext,
+use ibc::clients::tendermint::types::{
+    /* ClientState as ClientStateType, ConsensusState as ConsensusStateType, */ Header,
+    TENDERMINT_HEADER_TYPE_URL,
 };
+// use ibc::core::client::context::{
+//     Convertible, ExtClientExecutionContext, ExtClientValidationContext,
+// };
+// use ibc::core::client::types::error::ClientError;
 use ibc::core::client::types::Height;
 use ibc::core::host::types::identifiers::ChainId;
 use ibc::core::primitives::prelude::*;
@@ -27,8 +30,7 @@ use typed_builder::TypedBuilder;
 
 use crate::fixtures::clients::tendermint::ClientStateConfig;
 use crate::hosts::{TestBlock, TestHeader, TestHost};
-
-use super::HostConsensusState;
+use crate::testapp::ibc::core::types::MockIbcStore;
 
 /// A host that produces Tendermint blocks and interfaces with Tendermint light clients.
 #[derive(TypedBuilder, Debug)]
@@ -47,15 +49,24 @@ impl Default for TendermintHost {
     }
 }
 
-impl TestHost for TendermintHost {
+type TmIbcStore<S> = MockIbcStore<S, TendermintHost>;
+
+impl<S> TestHost<TmIbcStore<S>, TmIbcStore<S>> for TendermintHost
+where
+    S: ProvableStore + Debug,
+    // where
+    //     V: ExtClientValidationContext,
+    //     ConsensusStateType: Convertible<V::ConsensusStateRef>,
+    //     <ConsensusStateType as TryFrom<V::ConsensusStateRef>>::Error: Into<ClientError>,
+    //     E: ExtClientExecutionContext,
+    //     E::ClientStateRef: From<ClientStateType>,
+    //     ConsensusStateType: Convertible<E::ConsensusStateRef>,
+    //     <ConsensusStateType as TryFrom<E::ConsensusStateRef>>::Error: Into<ClientError>,
+{
     type Block = TmLightBlock;
     type BlockParams = BlockParams;
     type LightClientParams = ClientStateConfig;
-    type ClientState<V, E> = ClientState
-    where
-        V: ExtClientValidationContext,
-        V::ConsensusStateRef: From<HostConsensusState<Self>> + Into<HostConsensusState<Self>>,
-        E: ExtClientExecutionContext;
+    type ClientState = ClientState;
 
     fn history(&self) -> &Vec<Self::Block> {
         &self.history
@@ -86,15 +97,11 @@ impl TestHost for TendermintHost {
         .expect("Never fails")
     }
 
-    fn generate_client_state<V, E>(
+    fn generate_client_state(
         &self,
         latest_height: &Height,
         params: &Self::LightClientParams,
-    ) -> Self::ClientState<V, E>
-    where
-        V: ClientValidationContext,
-        E: ClientExecutionContext,
-    {
+    ) -> Self::ClientState {
         let client_state = ClientStateConfig::builder()
             .trusting_period(params.trusting_period)
             .max_clock_drift(params.max_clock_drift)
@@ -103,7 +110,7 @@ impl TestHost for TendermintHost {
             .build()
             .into_client_state(
                 self.chain_id.clone(),
-                self.get_block(latest_height)
+                TestHost::<TmIbcStore<S>, TmIbcStore<S>>::get_block(self, latest_height)
                     .expect("block exists")
                     .height(),
             )
