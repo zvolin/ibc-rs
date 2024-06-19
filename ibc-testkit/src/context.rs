@@ -6,7 +6,6 @@ use basecoin_store::impls::InMemoryStore;
 use ibc::core::channel::types::channel::ChannelEnd;
 use ibc::core::channel::types::commitment::PacketCommitment;
 use ibc::core::client::context::ClientExecutionContext;
-use ibc::core::client::types::error::ClientError;
 use ibc::core::client::types::Height;
 use ibc::core::connection::types::ConnectionEnd;
 use ibc::core::entrypoint::{dispatch, execute, validate};
@@ -20,25 +19,23 @@ use ibc::core::host::types::path::{
 };
 use ibc::core::host::{ExecutionContext, ValidationContext};
 use ibc::primitives::prelude::*;
-use ibc::primitives::proto::Any;
 use ibc::primitives::Timestamp;
 
 use super::testapp::ibc::core::types::{LightClientState, MockIbcStore};
 use crate::fixtures::core::context::TestContextConfig;
-use crate::hosts::{
-    HostClientState, HostConsensusState, MockHost, TendermintHost, TestBlock, TestHeader, TestHost,
-};
+use crate::hosts::{HostConsensusState, MockHost, TendermintHost, TestBlock, TestHeader, TestHost};
 use crate::relayer::error::RelayerError;
 use crate::testapp::ibc::core::router::MockRouter;
-use crate::testapp::ibc::core::types::DEFAULT_BLOCK_TIME_SECS;
+use crate::testapp::ibc::core::types::{
+    HostClientStateWithStore, LightClientStateWithStore, DEFAULT_BLOCK_TIME_SECS,
+};
 
 /// A context implementing the dependencies necessary for testing any IBC module.
 #[derive(Debug)]
 pub struct StoreGenericTestContext<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost<S>,
-    <HostClientState<H, S> as TryFrom<Any>>::Error: Into<ClientError>,
+    H: TestHost,
 {
     /// The multi store of the context.
     /// This is where the IBC store root is stored at IBC commitment prefix.
@@ -48,7 +45,7 @@ where
     pub host: H,
 
     /// An object that stores all IBC related data.
-    pub ibc_store: MockIbcStore<S, H::ClientState, HostConsensusState<H, S>>,
+    pub ibc_store: MockIbcStore<S, H>,
 
     /// A router that can route messages to the appropriate IBC application.
     pub ibc_router: MockRouter,
@@ -69,8 +66,7 @@ pub type TendermintContext = TestContext<TendermintHost>;
 impl<S, H> Default for StoreGenericTestContext<S, H>
 where
     S: ProvableStore + Debug + Default,
-    H: TestHost<S>,
-    <HostClientState<H, S> as TryFrom<Any>>::Error: Into<ClientError>,
+    H: TestHost,
 {
     fn default() -> Self {
         TestContextConfig::builder().build()
@@ -82,18 +78,15 @@ where
 impl<S, H> StoreGenericTestContext<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost<S>,
-    <HostClientState<H, S> as TryFrom<Any>>::Error: Into<ClientError>,
+    H: TestHost,
 {
     /// Returns an immutable reference to the IBC store.
-    pub fn ibc_store(&self) -> &MockIbcStore<S, H::ClientState, HostConsensusState<H, S>> {
+    pub fn ibc_store(&self) -> &MockIbcStore<S, H> {
         &self.ibc_store
     }
 
     /// Returns a mutable reference to the IBC store.
-    pub fn ibc_store_mut(
-        &mut self,
-    ) -> &mut MockIbcStore<S, H::ClientState, HostConsensusState<H, S>> {
+    pub fn ibc_store_mut(&mut self) -> &mut MockIbcStore<S, H> {
         &mut self.ibc_store
     }
 
@@ -278,7 +271,11 @@ where
     }
 
     /// Bootstraps the context with a client state and its corresponding [`ClientId`].
-    pub fn with_client_state(mut self, client_id: &ClientId, client_state: H::ClientState) -> Self {
+    pub fn with_client_state(
+        mut self,
+        client_id: &ClientId,
+        client_state: HostClientStateWithStore<S, H>,
+    ) -> Self {
         let client_state_path = ClientStatePath::new(client_id.clone());
         self.ibc_store
             .store_client_state(client_state_path, client_state)
@@ -291,7 +288,7 @@ where
         mut self,
         client_id: &ClientId,
         height: Height,
-        consensus_state: HostConsensusState<H, S>,
+        consensus_state: HostConsensusState<H>,
     ) -> Self {
         let consensus_state_path = ClientConsensusStatePath::new(
             client_id.clone(),
@@ -312,7 +309,7 @@ where
         &self,
         mut consensus_heights: Vec<Height>,
         client_params: &H::LightClientParams,
-    ) -> LightClientState<H, S> {
+    ) -> LightClientStateWithStore<S, H> {
         let client_height = if let Some(&height) = consensus_heights.last() {
             height
         } else {
@@ -344,14 +341,11 @@ where
     }
 
     /// Bootstrap a light client with ClientState and its ConsensusState(s) to this context.
-    pub fn with_light_client<RH>(
+    pub fn with_light_client(
         mut self,
         client_id: &ClientId,
-        light_client: LightClientState<RH, S>,
-    ) -> Self
-    where
-        RH: TestHost<S, ClientState = H::ClientState, Block = H::Block>,
-    {
+        light_client: LightClientStateWithStore<S, H>,
+    ) -> Self {
         self = self.with_client_state(client_id, light_client.client_state);
 
         for (height, consensus_state) in light_client.consensus_states {

@@ -6,6 +6,10 @@ use ibc::clients::tendermint::client_state::ClientState;
 use ibc::clients::tendermint::consensus_state::ConsensusState;
 use ibc::clients::tendermint::types::proto::v1::Header as RawHeader;
 use ibc::clients::tendermint::types::{Header, TENDERMINT_HEADER_TYPE_URL};
+use ibc::core::client::context::{
+    ClientExecutionContext, ClientValidationContext, ExtClientExecutionContext,
+    ExtClientValidationContext,
+};
 use ibc::core::client::types::Height;
 use ibc::core::host::types::identifiers::ChainId;
 use ibc::core::primitives::prelude::*;
@@ -24,6 +28,8 @@ use typed_builder::TypedBuilder;
 use crate::fixtures::clients::tendermint::ClientStateConfig;
 use crate::hosts::{TestBlock, TestHeader, TestHost};
 
+use super::HostConsensusState;
+
 /// A host that produces Tendermint blocks and interfaces with Tendermint light clients.
 #[derive(TypedBuilder, Debug)]
 pub struct TendermintHost {
@@ -41,14 +47,15 @@ impl Default for TendermintHost {
     }
 }
 
-impl<S> TestHost<S> for TendermintHost
-where
-    S: ProvableStore + Debug,
-{
+impl TestHost for TendermintHost {
     type Block = TmLightBlock;
     type BlockParams = BlockParams;
     type LightClientParams = ClientStateConfig;
-    type ClientState = ClientState;
+    type ClientState<V, E> = ClientState
+    where
+        V: ExtClientValidationContext,
+        V::ConsensusStateRef: From<HostConsensusState<Self>> + Into<HostConsensusState<Self>>,
+        E: ExtClientExecutionContext;
 
     fn history(&self) -> &Vec<Self::Block> {
         &self.history
@@ -79,11 +86,15 @@ where
         .expect("Never fails")
     }
 
-    fn generate_client_state(
+    fn generate_client_state<V, E>(
         &self,
         latest_height: &Height,
         params: &Self::LightClientParams,
-    ) -> Self::ClientState {
+    ) -> Self::ClientState<V, E>
+    where
+        V: ClientValidationContext,
+        E: ClientExecutionContext,
+    {
         let client_state = ClientStateConfig::builder()
             .trusting_period(params.trusting_period)
             .max_clock_drift(params.max_clock_drift)

@@ -2,15 +2,13 @@
 
 use alloc::sync::Arc;
 use core::fmt::Debug;
-use ibc::core::client::context::consensus_state::ConsensusState;
-use ibc::core::client::types::error::ClientError;
+use ibc::core::client::context::{ExtClientExecutionContext, ExtClientValidationContext};
 
 use basecoin_store::context::{ProvableStore, Store};
 use basecoin_store::impls::SharedStore;
 use basecoin_store::types::{BinStore, JsonStore, ProtobufStore, TypedSet, TypedStore};
 use ibc::core::channel::types::channel::ChannelEnd;
 use ibc::core::channel::types::commitment::{AcknowledgementCommitment, PacketCommitment};
-use ibc::core::client::context::client_state::ClientState;
 use ibc::core::client::types::Height;
 use ibc::core::connection::types::ConnectionEnd;
 use ibc::core::handler::types::events::IbcEvent;
@@ -38,16 +36,18 @@ use crate::testapp::ibc::clients::mock::consensus_state::MockConsensusState;
 use crate::testapp::ibc::clients::mock::header::MockHeader;
 pub const DEFAULT_BLOCK_TIME_SECS: u64 = 3;
 
-pub type DefaultIbcStore<AnyClientState, AnyConsensusState> =
-    MockIbcStore<MockStore, AnyClientState, AnyConsensusState>;
+pub type DefaultIbcStore<H> = MockIbcStore<MockStore, H>;
+pub type HostClientStateWithStore<S, H> =
+    HostClientState<H, MockIbcStore<S, H>, MockIbcStore<S, H>>;
+pub type LightClientStateWithStore<S, H> =
+    LightClientState<H, MockIbcStore<S, H>, MockIbcStore<S, H>>;
 
 /// An object that stores all IBC related data.
 #[derive(Debug)]
-pub struct MockIbcStore<S, AnyClientState, AnyConsensusState>
+pub struct MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    AnyClientState: ClientState<Self, Self> + Clone,
-    AnyConsensusState: ConsensusState + Clone,
+    H: TestHost,
 {
     /// chain revision number,
     pub revision_number: Arc<Mutex<u64>>,
@@ -67,10 +67,11 @@ where
     pub client_processed_heights:
         ProtobufStore<SharedStore<S>, ClientUpdateHeightPath, Height, RawHeight>,
     /// A typed-store for AnyClientState
-    pub client_state_store: ProtobufStore<SharedStore<S>, ClientStatePath, AnyClientState, Any>,
+    pub client_state_store:
+        ProtobufStore<SharedStore<S>, ClientStatePath, HostClientState<H, Self, Self>, Any>,
     /// A typed-store for AnyConsensusState
     pub consensus_state_store:
-        ProtobufStore<SharedStore<S>, ClientConsensusStatePath, AnyConsensusState, Any>,
+        ProtobufStore<SharedStore<S>, ClientConsensusStatePath, HostConsensusState<H>, Any>,
     /// A typed-store for ConnectionEnd
     pub connection_end_store:
         ProtobufStore<SharedStore<S>, ConnectionPath, ConnectionEnd, RawConnectionEnd>,
@@ -91,7 +92,7 @@ where
     /// A typed-store for packet ack
     pub packet_ack_store: BinStore<SharedStore<S>, AckPath, AcknowledgementCommitment>,
     /// Map of host consensus states
-    pub host_consensus_states: Arc<Mutex<BTreeMap<u64, AnyConsensusState>>>,
+    pub host_consensus_states: Arc<Mutex<BTreeMap<u64, HostConsensusState<H>>>>,
     /// Map of older ibc commitment proofs
     pub ibc_commiment_proofs: Arc<Mutex<BTreeMap<u64, CommitmentProof>>>,
     /// IBC Events
@@ -100,11 +101,10 @@ where
     pub logs: Arc<Mutex<Vec<String>>>,
 }
 
-impl<S, AnyClientState, AnyConsensusState> MockIbcStore<S, AnyClientState, AnyConsensusState>
+impl<S, H> MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    AnyClientState: ClientState<Self, Self> + Clone,
-    AnyConsensusState: ConsensusState + Clone,
+    H: TestHost,
 {
     pub fn new(revision_number: u64, store: S) -> Self {
         let shared_store = SharedStore::new(store);
@@ -151,7 +151,7 @@ where
         }
     }
 
-    fn store_host_consensus_state(&mut self, height: u64, consensus_state: AnyConsensusState) {
+    fn store_host_consensus_state(&mut self, height: u64, consensus_state: HostConsensusState<H>) {
         self.host_consensus_states
             .lock()
             .insert(height, consensus_state);
@@ -164,7 +164,7 @@ where
     pub fn begin_block(
         &mut self,
         height: u64,
-        consensus_state: AnyConsensusState,
+        consensus_state: HostConsensusState<H>,
         proof: CommitmentProof,
     ) {
         assert_eq!(self.store.current_height(), height);
@@ -185,10 +185,11 @@ where
     }
 }
 
-impl<S, AnyClientState> Default for MockIbcStore<S, AnyClientState, MockConsensusState>
+impl<S, H> Default for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug + Default,
-    AnyClientState: ClientState<Self, Self> + Clone,
+    H: TestHost,
+    HostConsensusState<H>: From<MockConsensusState>,
 {
     fn default() -> Self {
         // Note: this creates a MockIbcStore which has MockConsensusState as Host ConsensusState
@@ -206,18 +207,20 @@ where
     }
 }
 
-pub struct LightClientState<H: TestHost<S>, S>
+pub struct LightClientState<H, V, E>
 where
-    S: ProvableStore + Debug,
+    H: TestHost,
+    V: ExtClientValidationContext,
+    V::ConsensusStateRef: From<HostConsensusState<H>> + Into<HostConsensusState<H>>,
+    E: ExtClientExecutionContext,
 {
-    pub client_state: H::ClientState,
-    pub consensus_states: BTreeMap<Height, HostConsensusState<H, S>>,
+    pub client_state: HostClientState<H, V, E>,
+    pub consensus_states: BTreeMap<Height, HostConsensusState<H>>,
 }
 
-impl<H> Default for LightClientState<H, MockStore>
+impl<H> Default for LightClientStateWithStore<MockStore, H>
 where
-    H: TestHost<MockStore>,
-    <HostClientState<H, MockStore> as TryFrom<Any>>::Error: Into<ClientError>,
+    H: TestHost,
 {
     fn default() -> Self {
         let context = TestContext::<H>::default();
@@ -225,10 +228,9 @@ where
     }
 }
 
-impl<H> LightClientState<H, MockStore>
+impl<H> LightClientStateWithStore<MockStore, H>
 where
-    H: TestHost<MockStore>,
-    <HostClientState<H, MockStore> as TryFrom<Any>>::Error: Into<ClientError>,
+    H: TestHost,
 {
     pub fn with_latest_height(height: Height) -> Self {
         let context = TestContextConfig::builder()
@@ -242,8 +244,7 @@ where
 #[builder(builder_method(name = init), build_method(into))]
 pub struct LightClientBuilder<'a, H>
 where
-    H: TestHost<MockStore> + 'a,
-    <HostClientState<H, MockStore> as TryFrom<Any>>::Error: Into<ClientError>,
+    H: TestHost,
 {
     context: &'a TestContext<H>,
     #[builder(default, setter(into))]
@@ -252,10 +253,9 @@ where
     params: H::LightClientParams,
 }
 
-impl<'a, H> From<LightClientBuilder<'a, H>> for LightClientState<H, MockStore>
+impl<'a, H> From<LightClientBuilder<'a, H>> for LightClientStateWithStore<MockStore, H>
 where
-    H: TestHost<MockStore> + 'a,
-    <HostClientState<H, MockStore> as TryFrom<Any>>::Error: Into<ClientError>,
+    H: TestHost + 'a,
 {
     fn from(builder: LightClientBuilder<'a, H>) -> Self {
         let LightClientBuilder {

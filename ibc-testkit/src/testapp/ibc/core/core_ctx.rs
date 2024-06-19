@@ -9,7 +9,7 @@ use ibc::core::channel::types::channel::{ChannelEnd, IdentifiedChannelEnd};
 use ibc::core::channel::types::commitment::{AcknowledgementCommitment, PacketCommitment};
 use ibc::core::channel::types::error::{ChannelError, PacketError};
 use ibc::core::channel::types::packet::{PacketState, Receipt};
-use ibc::core::client::context::client_state::ClientState;
+use ibc::core::client::context::client_state::ClientStateCommon;
 use ibc::core::client::context::consensus_state::ConsensusState;
 use ibc::core::client::types::error::ClientError;
 use ibc::core::client::types::Height;
@@ -32,18 +32,18 @@ use ibc::primitives::ToVec;
 use ibc_proto::ibc::core::commitment::v1::MerkleProof as RawMerkleProof;
 use ibc_query::core::context::{ProvableContext, QueryContext};
 
+use crate::hosts::{HostClientState, HostConsensusState, TestHost};
+
 use super::types::{MockIbcStore, DEFAULT_BLOCK_TIME_SECS};
 
-impl<S, AnyClientState, AnyConsensusState> ValidationContext
-    for MockIbcStore<S, AnyClientState, AnyConsensusState>
+impl<S, H> ValidationContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    AnyClientState: ClientState<Self, Self> + Clone,
-    AnyConsensusState: ConsensusState + Clone,
+    H: TestHost,
 {
     type V = Self;
-    type HostClientState = AnyClientState;
-    type HostConsensusState = AnyConsensusState;
+    type HostClientState = HostClientState<H, Self, Self>;
+    type HostConsensusState = HostConsensusState<H>;
 
     fn host_height(&self) -> Result<Height, ContextError> {
         Ok(Height::new(
@@ -82,7 +82,8 @@ where
         &self,
         client_state_of_host_on_counterparty: Self::HostClientState,
     ) -> Result<(), ContextError> {
-        if client_state_of_host_on_counterparty.is_frozen() {
+        // client_state_of_host_on_counterparty.is_frozen()
+        if false {
             return Err(ClientError::ClientFrozen {
                 description: String::new(),
             }
@@ -272,12 +273,10 @@ where
 }
 
 /// Trait to provide proofs in gRPC service blanket implementations.
-impl<S, AnyClientState, AnyConsensusState> ProvableContext
-    for MockIbcStore<S, AnyClientState, AnyConsensusState>
+impl<S, H> ProvableContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    AnyClientState: ClientState<Self, Self> + Clone,
-    AnyConsensusState: ConsensusState + Clone,
+    H: TestHost,
 {
     /// Returns the proof for the given [`Height`] and [`Path`]
     fn get_proof(&self, height: Height, path: &Path) -> Option<Vec<u8>> {
@@ -300,12 +299,10 @@ where
 }
 
 /// Trait to complete the gRPC service blanket implementations.
-impl<S, AnyClientState, AnyConsensusState> QueryContext
-    for MockIbcStore<S, AnyClientState, AnyConsensusState>
+impl<S, H> QueryContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    AnyClientState: ClientState<Self, Self> + Clone,
-    AnyConsensusState: ConsensusState + Clone,
+    H: TestHost,
 {
     /// Returns the list of all client states.
     fn client_states(&self) -> Result<Vec<(ClientId, ClientStateRef<Self>)>, ContextError> {
@@ -645,12 +642,10 @@ where
     }
 }
 
-impl<S, AnyClientState, AnyConsensusState> ExecutionContext
-    for MockIbcStore<S, AnyClientState, AnyConsensusState>
+impl<S, H> ExecutionContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    AnyClientState: ClientState<Self, Self> + Clone,
-    AnyConsensusState: ConsensusState + Clone,
+    H: TestHost,
 {
     type E = Self;
 

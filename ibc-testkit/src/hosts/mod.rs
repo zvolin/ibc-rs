@@ -5,9 +5,11 @@ use core::fmt::Debug;
 use core::ops::Add;
 use core::time::Duration;
 
-use basecoin_store::context::ProvableStore;
 use ibc::core::client::context::client_state::ClientState;
 use ibc::core::client::context::consensus_state::ConsensusState;
+use ibc::core::client::context::ExtClientExecutionContext;
+use ibc::core::client::context::ExtClientValidationContext;
+use ibc::core::client::types::error::ClientError;
 use ibc::core::client::types::Height;
 use ibc::core::primitives::prelude::*;
 use ibc::core::primitives::Timestamp;
@@ -15,29 +17,31 @@ use ibc::primitives::proto::Any;
 
 pub use self::mock::MockHost;
 pub use self::tendermint::TendermintHost;
-use crate::testapp::ibc::core::types::MockIbcStore;
 
-pub type HostClientState<H, S> = <H as TestHost<S>>::ClientState;
-pub type HostBlock<H, S> = <H as TestHost<S>>::Block;
-pub type HostBlockParams<H, S> = <H as TestHost<S>>::BlockParams;
-pub type HostLightClientParams<H, S> = <H as TestHost<S>>::LightClientParams;
-pub type HostHeader<H, S> = <HostBlock<H, S> as TestBlock>::Header;
-pub type HostConsensusState<H, S> = <HostHeader<H, S> as TestHeader>::ConsensusState;
+pub type HostClientState<H, V, E> = <H as TestHost>::ClientState<V, E>;
+pub type HostBlock<H> = <H as TestHost>::Block;
+pub type HostBlockParams<H> = <H as TestHost>::BlockParams;
+pub type HostLightClientParams<H> = <H as TestHost>::LightClientParams;
+pub type HostHeader<H> = <HostBlock<H> as TestBlock>::Header;
+pub type HostConsensusState<H> = <HostHeader<H> as TestHeader>::ConsensusState;
 
 /// TestHost is a trait that defines the interface for a host blockchain.
-pub trait TestHost<S>: Default + Debug + Sized
-where
-    S: ProvableStore + Debug,
-{
+pub trait TestHost: Default + Debug + Sized {
     /// The type of block produced by the host.
     type Block: TestBlock;
 
     /// The type of client state produced by the host.
-    type ClientState: ClientState<
-            MockIbcStore<S, Self::ClientState, HostConsensusState<Self, S>>,
-            MockIbcStore<S, Self::ClientState, HostConsensusState<Self, S>>,
-        > + Clone
-        + Debug;
+    type ClientState<V, E>: ClientState<V, E>
+        + Clone
+        + Debug
+        + Into<Any>
+        + TryFrom<Any, Error = ClientError>
+    where
+        V: ExtClientValidationContext,
+        V::ConsensusStateRef: From<HostConsensusState<Self>> + Into<HostConsensusState<Self>>,
+        E: ExtClientExecutionContext;
+    // uncomment to get overflow on types
+    // E::ClientStateMut: From<Self::ClientState<V, E>>;
 
     /// The type of block parameter to produce a block.
     type BlockParams: Debug + Default;
@@ -105,11 +109,15 @@ where
     ) -> Self::Block;
 
     /// Generate a client state using the block at the given height and the provided parameters.
-    fn generate_client_state(
+    fn generate_client_state<V, E>(
         &self,
         latest_height: &Height,
         params: &Self::LightClientParams,
-    ) -> Self::ClientState;
+    ) -> Self::ClientState<V, E>
+    where
+        V: ExtClientValidationContext,
+        V::ConsensusStateRef: From<HostConsensusState<Self>> + Into<HostConsensusState<Self>>,
+        E: ExtClientExecutionContext;
 
     fn validate(&self) -> Result<(), String> {
         // Check that headers in the history are in sequential order.
