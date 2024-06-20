@@ -20,8 +20,8 @@ use ibc::core::host::types::path::{
     SeqAckPath, SeqRecvPath, SeqSendPath,
 };
 use ibc::core::primitives::prelude::*;
+use ibc::core::primitives::proto::Any;
 use ibc::core::primitives::Timestamp;
-use ibc_proto::google::protobuf::Any;
 use ibc_proto::ibc::core::channel::v1::Channel as RawChannelEnd;
 use ibc_proto::ibc::core::client::v1::Height as RawHeight;
 use ibc_proto::ibc::core::connection::v1::ConnectionEnd as RawConnectionEnd;
@@ -36,14 +36,16 @@ use crate::testapp::ibc::clients::mock::consensus_state::MockConsensusState;
 use crate::testapp::ibc::clients::mock::header::MockHeader;
 pub const DEFAULT_BLOCK_TIME_SECS: u64 = 3;
 
-pub type DefaultIbcStore<H> = MockIbcStore<MockStore, H>;
+pub type HostIbcStore<S, H> = MockIbcStore<S, HostClientState<H>, HostConsensusState<H>>;
+pub type DefaultIbcStore<H> = HostIbcStore<MockStore, H>;
 
 /// An object that stores all IBC related data.
 #[derive(Debug)]
-pub struct MockIbcStore<S, H>
+pub struct MockIbcStore<S, AnyClientState, AnyConsensusState>
 where
     S: ProvableStore + Debug,
-    H: TestHost,
+    AnyClientState: Clone + Debug + Into<Any> + TryFrom<Any>,
+    AnyConsensusState: Clone + Debug + Into<Any> + TryFrom<Any>,
 {
     /// chain revision number,
     pub revision_number: Arc<Mutex<u64>>,
@@ -63,10 +65,10 @@ where
     pub client_processed_heights:
         ProtobufStore<SharedStore<S>, ClientUpdateHeightPath, Height, RawHeight>,
     /// A typed-store for AnyClientState
-    pub client_state_store: ProtobufStore<SharedStore<S>, ClientStatePath, HostClientState<H>, Any>,
+    pub client_state_store: ProtobufStore<SharedStore<S>, ClientStatePath, AnyClientState, Any>,
     /// A typed-store for AnyConsensusState
     pub consensus_state_store:
-        ProtobufStore<SharedStore<S>, ClientConsensusStatePath, HostConsensusState<H>, Any>,
+        ProtobufStore<SharedStore<S>, ClientConsensusStatePath, AnyConsensusState, Any>,
     /// A typed-store for ConnectionEnd
     pub connection_end_store:
         ProtobufStore<SharedStore<S>, ConnectionPath, ConnectionEnd, RawConnectionEnd>,
@@ -87,7 +89,7 @@ where
     /// A typed-store for packet ack
     pub packet_ack_store: BinStore<SharedStore<S>, AckPath, AcknowledgementCommitment>,
     /// Map of host consensus states
-    pub host_consensus_states: Arc<Mutex<BTreeMap<u64, HostConsensusState<H>>>>,
+    pub host_consensus_states: Arc<Mutex<BTreeMap<u64, AnyConsensusState>>>,
     /// Map of older ibc commitment proofs
     pub ibc_commiment_proofs: Arc<Mutex<BTreeMap<u64, CommitmentProof>>>,
     /// IBC Events
@@ -96,10 +98,11 @@ where
     pub logs: Arc<Mutex<Vec<String>>>,
 }
 
-impl<S, H> MockIbcStore<S, H>
+impl<S, AnyClientState, AnyConsensusState> MockIbcStore<S, AnyClientState, AnyConsensusState>
 where
     S: ProvableStore + Debug,
-    H: TestHost,
+    AnyClientState: Clone + Debug + Into<Any> + TryFrom<Any>,
+    AnyConsensusState: Clone + Debug + Into<Any> + TryFrom<Any>,
 {
     pub fn new(revision_number: u64, store: S) -> Self {
         let shared_store = SharedStore::new(store);
@@ -146,7 +149,7 @@ where
         }
     }
 
-    fn store_host_consensus_state(&mut self, height: u64, consensus_state: HostConsensusState<H>) {
+    fn store_host_consensus_state(&mut self, height: u64, consensus_state: AnyConsensusState) {
         self.host_consensus_states
             .lock()
             .insert(height, consensus_state);
@@ -159,7 +162,7 @@ where
     pub fn begin_block(
         &mut self,
         height: u64,
-        consensus_state: HostConsensusState<H>,
+        consensus_state: AnyConsensusState,
         proof: CommitmentProof,
     ) {
         assert_eq!(self.store.current_height(), height);
@@ -180,11 +183,13 @@ where
     }
 }
 
-impl<S, H> Default for MockIbcStore<S, H>
+impl<S, AnyClientState, AnyConsensusState> Default
+    for MockIbcStore<S, AnyClientState, AnyConsensusState>
 where
     S: ProvableStore + Debug + Default,
-    H: TestHost,
-    HostConsensusState<H>: From<MockConsensusState>,
+    AnyClientState: Clone + Debug + Into<Any> + TryFrom<Any>,
+    AnyConsensusState: Clone + Debug + Into<Any> + TryFrom<Any>,
+    AnyConsensusState: From<MockConsensusState>,
 {
     fn default() -> Self {
         // Note: this creates a MockIbcStore which has MockConsensusState as Host ConsensusState
@@ -213,6 +218,8 @@ where
 impl<H> Default for LightClientState<H>
 where
     H: TestHost,
+    HostClientState<H>: Clone + Debug + Into<Any> + TryFrom<Any>,
+    HostConsensusState<H>: Clone + Debug + Into<Any> + TryFrom<Any>,
     HostClientState<H>: ClientState<DefaultIbcStore<H>, DefaultIbcStore<H>>,
 {
     fn default() -> Self {
@@ -224,6 +231,8 @@ where
 impl<H> LightClientState<H>
 where
     H: TestHost,
+    HostClientState<H>: Clone + Debug + Into<Any> + TryFrom<Any>,
+    HostConsensusState<H>: Clone + Debug + Into<Any> + TryFrom<Any>,
     HostClientState<H>: ClientState<DefaultIbcStore<H>, DefaultIbcStore<H>>,
 {
     pub fn with_latest_height(height: Height) -> Self {
@@ -249,7 +258,9 @@ where
 
 impl<'a, H> From<LightClientBuilder<'a, H>> for LightClientState<H>
 where
-    H: TestHost + 'a,
+    H: TestHost,
+    HostClientState<H>: Clone + Debug + Into<Any> + TryFrom<Any>,
+    HostConsensusState<H>: Clone + Debug + Into<Any> + TryFrom<Any>,
     HostClientState<H>: ClientState<DefaultIbcStore<H>, DefaultIbcStore<H>>,
 {
     fn from(builder: LightClientBuilder<'a, H>) -> Self {

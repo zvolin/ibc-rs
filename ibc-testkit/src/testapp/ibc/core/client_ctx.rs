@@ -3,6 +3,7 @@ use core::fmt::Debug;
 use basecoin_store::context::{ProvableStore, Store};
 use basecoin_store::types::Height as StoreHeight;
 use ibc::core::client::context::client_state::{ClientStateExecution, ClientStateValidation};
+use ibc::core::client::context::consensus_state::ConsensusState;
 use ibc::core::client::context::{
     ClientExecutionContext, ClientValidationContext, ExtClientValidationContext,
 };
@@ -14,11 +15,11 @@ use ibc::core::host::types::path::{
     ClientConsensusStatePath, ClientStatePath, ClientUpdateHeightPath, ClientUpdateTimePath, Path,
 };
 use ibc::core::host::ValidationContext;
+use ibc::core::primitives::proto::Any;
 use ibc::core::primitives::Timestamp;
 use ibc::primitives::prelude::*;
 
 use super::types::MockIbcStore;
-use crate::hosts::{HostClientState, HostConsensusState, TestHost};
 use crate::testapp::ibc::clients::mock::client_state::MockClientContext;
 
 pub type PortChannelIdMap<V> = BTreeMap<PortId, BTreeMap<ChannelId, V>>;
@@ -34,11 +35,12 @@ pub type PortChannelIdMap<V> = BTreeMap<PortId, BTreeMap<ChannelId, V>>;
 //    pub consensus_states: BTreeMap<Height, AnyConsensusState>,
 //}
 
-impl<S, H> MockClientContext for MockIbcStore<S, H>
+impl<S, AnyClientState, AnyConsensusState> MockClientContext
+    for MockIbcStore<S, AnyClientState, AnyConsensusState>
 where
     S: ProvableStore + Debug,
-    H: TestHost,
-    HostClientState<H>: ClientStateValidation<Self>,
+    AnyClientState: ClientStateValidation<Self> + Clone + Debug + Into<Any> + TryFrom<Any>,
+    AnyConsensusState: ConsensusState + Clone + Debug + Into<Any> + TryFrom<Any>,
 {
     fn host_timestamp(&self) -> Result<Timestamp, ContextError> {
         ValidationContext::host_timestamp(self)
@@ -49,11 +51,12 @@ where
     }
 }
 
-impl<S, H> ExtClientValidationContext for MockIbcStore<S, H>
+impl<S, AnyClientState, AnyConsensusState> ExtClientValidationContext
+    for MockIbcStore<S, AnyClientState, AnyConsensusState>
 where
     S: ProvableStore + Debug,
-    H: TestHost,
-    HostClientState<H>: ClientStateValidation<Self>,
+    AnyClientState: ClientStateValidation<Self> + Clone + Debug + Into<Any> + TryFrom<Any>,
+    AnyConsensusState: ConsensusState + Clone + Debug + Into<Any> + TryFrom<Any>,
 {
     fn host_timestamp(&self) -> Result<Timestamp, ContextError> {
         ValidationContext::host_timestamp(self)
@@ -157,14 +160,15 @@ where
     }
 }
 
-impl<S, H> ClientValidationContext for MockIbcStore<S, H>
+impl<S, AnyClientState, AnyConsensusState> ClientValidationContext
+    for MockIbcStore<S, AnyClientState, AnyConsensusState>
 where
     S: ProvableStore + Debug,
-    H: TestHost,
-    HostClientState<H>: ClientStateValidation<Self>,
+    AnyClientState: ClientStateValidation<Self> + Clone + Debug + Into<Any> + TryFrom<Any>,
+    AnyConsensusState: ConsensusState + Clone + Debug + Into<Any> + TryFrom<Any>,
 {
-    type ClientStateRef = HostClientState<H>;
-    type ConsensusStateRef = HostConsensusState<H>;
+    type ClientStateRef = AnyClientState;
+    type ConsensusStateRef = AnyConsensusState;
 
     fn client_state(&self, client_id: &ClientId) -> Result<Self::ClientStateRef, ContextError> {
         Ok(self
@@ -231,13 +235,14 @@ where
     }
 }
 
-impl<S, H> ClientExecutionContext for MockIbcStore<S, H>
+impl<S, AnyClientState, AnyConsensusState> ClientExecutionContext
+    for MockIbcStore<S, AnyClientState, AnyConsensusState>
 where
     S: ProvableStore + Debug,
-    H: TestHost,
-    HostClientState<H>: ClientStateExecution<Self>,
+    AnyClientState: ClientStateExecution<Self> + Clone + Debug + Into<Any> + TryFrom<Any>,
+    AnyConsensusState: ConsensusState + Clone + Debug + Into<Any> + TryFrom<Any>,
 {
-    type ClientStateMut = HostClientState<H>;
+    type ClientStateMut = AnyClientState;
 
     /// Called upon successful client creation and update
     fn store_client_state(

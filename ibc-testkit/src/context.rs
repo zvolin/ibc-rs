@@ -22,14 +22,14 @@ use ibc::core::host::{ExecutionContext, ValidationContext};
 use ibc::primitives::prelude::*;
 use ibc::primitives::Timestamp;
 
-use super::testapp::ibc::core::types::{LightClientState, MockIbcStore};
+use super::testapp::ibc::core::types::LightClientState;
 use crate::fixtures::core::context::TestContextConfig;
 use crate::hosts::{
     HostClientState, HostConsensusState, MockHost, TendermintHost, TestBlock, TestHeader, TestHost,
 };
 use crate::relayer::error::RelayerError;
 use crate::testapp::ibc::core::router::MockRouter;
-use crate::testapp::ibc::core::types::DEFAULT_BLOCK_TIME_SECS;
+use crate::testapp::ibc::core::types::{HostIbcStore, DEFAULT_BLOCK_TIME_SECS};
 
 /// A context implementing the dependencies necessary for testing any IBC module.
 #[derive(Debug)]
@@ -46,7 +46,7 @@ where
     pub host: H,
 
     /// An object that stores all IBC related data.
-    pub ibc_store: MockIbcStore<S, H>,
+    pub ibc_store: HostIbcStore<S, H>,
 
     /// A router that can route messages to the appropriate IBC application.
     pub ibc_router: MockRouter,
@@ -68,7 +68,7 @@ impl<S, H> Default for StoreGenericTestContext<S, H>
 where
     S: ProvableStore + Debug + Default,
     H: TestHost,
-    HostClientState<H>: ClientState<MockIbcStore<S, H>, MockIbcStore<S, H>>,
+    HostClientState<H>: ClientState<HostIbcStore<S, H>, HostIbcStore<S, H>>,
 {
     fn default() -> Self {
         TestContextConfig::builder().build()
@@ -81,15 +81,15 @@ impl<S, H> StoreGenericTestContext<S, H>
 where
     S: ProvableStore + Debug,
     H: TestHost,
-    HostClientState<H>: ClientState<MockIbcStore<S, H>, MockIbcStore<S, H>>,
+    HostClientState<H>: ClientState<HostIbcStore<S, H>, HostIbcStore<S, H>>,
 {
     /// Returns an immutable reference to the IBC store.
-    pub fn ibc_store(&self) -> &MockIbcStore<S, H> {
+    pub fn ibc_store(&self) -> &HostIbcStore<S, H> {
         &self.ibc_store
     }
 
     /// Returns a mutable reference to the IBC store.
-    pub fn ibc_store_mut(&mut self) -> &mut MockIbcStore<S, H> {
+    pub fn ibc_store_mut(&mut self) -> &mut HostIbcStore<S, H> {
         &mut self.ibc_store
     }
 
