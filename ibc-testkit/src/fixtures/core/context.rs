@@ -1,8 +1,8 @@
 use alloc::fmt::Debug;
 use core::time::Duration;
+use ibc::core::client::context::client_state::ClientState;
 
 use basecoin_store::context::ProvableStore;
-use ibc::core::client::context::client_state::ClientStateValidation;
 use ibc::core::client::types::Height;
 use ibc::core::primitives::prelude::*;
 use ibc::core::primitives::Timestamp;
@@ -41,7 +41,7 @@ impl<S, H> From<TestContextConfig<H>> for StoreGenericTestContext<S, H>
 where
     S: ProvableStore + Debug + Default,
     H: TestHost,
-    HostClientState<H>: ClientStateValidation<MockIbcStore<S>>,
+    HostClientState<H>: ClientState<MockIbcStore<S, H>, MockIbcStore<S, H>>,
 {
     fn from(params: TestContextConfig<H>) -> Self {
         assert_ne!(

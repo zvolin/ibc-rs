@@ -5,10 +5,7 @@ use core::fmt::Debug;
 use core::ops::Add;
 use core::time::Duration;
 
-use ibc::core::client::context::client_state::ClientState;
 use ibc::core::client::context::consensus_state::ConsensusState;
-use ibc::core::client::context::ClientExecutionContext;
-use ibc::core::client::context::ClientValidationContext;
 use ibc::core::client::types::error::ClientError;
 use ibc::core::client::types::Height;
 use ibc::core::primitives::prelude::*;
@@ -18,28 +15,20 @@ use ibc::primitives::proto::Any;
 pub use self::mock::MockHost;
 pub use self::tendermint::TendermintHost;
 
-pub type HostClientState<H, V, E> = <H as TestHost<V, E>>::ClientState;
-pub type HostBlock<H, V, E> = <H as TestHost<V, E>>::Block;
-pub type HostBlockParams<H, V, E> = <H as TestHost<V, E>>::BlockParams;
-pub type HostLightClientParams<H, V, E> = <H as TestHost<V, E>>::LightClientParams;
-pub type HostHeader<H, V, E> = <HostBlock<H, V, E> as TestBlock>::Header;
-pub type HostConsensusState<H, V, E> = <HostHeader<H, V, E> as TestHeader>::ConsensusState;
+pub type HostClientState<H> = <H as TestHost>::ClientState;
+pub type HostBlock<H> = <H as TestHost>::Block;
+pub type HostBlockParams<H> = <H as TestHost>::BlockParams;
+pub type HostLightClientParams<H> = <H as TestHost>::LightClientParams;
+pub type HostHeader<H> = <HostBlock<H> as TestBlock>::Header;
+pub type HostConsensusState<H> = <HostHeader<H> as TestHeader>::ConsensusState;
 
 /// TestHost is a trait that defines the interface for a host blockchain.
-pub trait TestHost<V, E>: Default + Debug + Sized
-where
-    V: ClientValidationContext,
-    E: ClientExecutionContext,
-{
+pub trait TestHost: Default + Debug + Sized {
     /// The type of block produced by the host.
     type Block: TestBlock;
 
     /// The type of client state produced by the host.
-    type ClientState: ClientState<V, E>
-        + Clone
-        + Debug
-        + Into<Any>
-        + TryFrom<Any, Error = ClientError>;
+    type ClientState: Clone + Debug + Into<Any> + TryFrom<Any, Error = ClientError>;
 
     // uncomment to get overflow on types
     // E::ClientStateMut: From<Self::ClientState<V, E>>;

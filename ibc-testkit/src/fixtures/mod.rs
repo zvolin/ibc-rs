@@ -6,6 +6,7 @@ use alloc::fmt::Debug;
 use ibc::core::handler::types::error::ContextError;
 use ibc::core::primitives::prelude::*;
 
+use crate::hosts::TestHost;
 use crate::testapp::ibc::core::types::DefaultIbcStore;
 pub enum Expect {
     Success,
@@ -13,12 +14,12 @@ pub enum Expect {
 }
 
 #[derive(Debug)]
-pub struct Fixture<M: Debug> {
-    pub ctx: DefaultIbcStore,
+pub struct Fixture<H: TestHost, M: Debug> {
+    pub ctx: DefaultIbcStore<H>,
     pub msg: M,
 }
 
-impl<M: Debug> Fixture<M> {
+impl<H: TestHost, M: Debug> Fixture<H, M> {
     pub fn generate_error_msg(
         &self,
         expect: &Expect,

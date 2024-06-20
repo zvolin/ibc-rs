@@ -2,6 +2,7 @@ use core::fmt::Debug;
 
 use basecoin_store::context::{ProvableStore, Store};
 use basecoin_store::types::Height as StoreHeight;
+use ibc::core::client::context::client_state::{ClientStateExecution, ClientStateValidation};
 use ibc::core::client::context::{
     ClientExecutionContext, ClientValidationContext, ExtClientValidationContext,
 };
@@ -36,7 +37,8 @@ pub type PortChannelIdMap<V> = BTreeMap<PortId, BTreeMap<ChannelId, V>>;
 impl<S, H> MockClientContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost<Self, Self>,
+    H: TestHost,
+    HostClientState<H>: ClientStateValidation<Self>,
 {
     fn host_timestamp(&self) -> Result<Timestamp, ContextError> {
         ValidationContext::host_timestamp(self)
@@ -50,7 +52,8 @@ where
 impl<S, H> ExtClientValidationContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost<Self, Self>,
+    H: TestHost,
+    HostClientState<H>: ClientStateValidation<Self>,
 {
     fn host_timestamp(&self) -> Result<Timestamp, ContextError> {
         ValidationContext::host_timestamp(self)
@@ -157,10 +160,11 @@ where
 impl<S, H> ClientValidationContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost<Self, Self>,
+    H: TestHost,
+    HostClientState<H>: ClientStateValidation<Self>,
 {
-    type ClientStateRef = HostClientState<H, Self, Self>;
-    type ConsensusStateRef = HostConsensusState<H, Self, Self>;
+    type ClientStateRef = HostClientState<H>;
+    type ConsensusStateRef = HostConsensusState<H>;
 
     fn client_state(&self, client_id: &ClientId) -> Result<Self::ClientStateRef, ContextError> {
         Ok(self
@@ -230,9 +234,10 @@ where
 impl<S, H> ClientExecutionContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost<Self, Self>,
+    H: TestHost,
+    HostClientState<H>: ClientStateExecution<Self>,
 {
-    type ClientStateMut = HostClientState<H, Self, Self>;
+    type ClientStateMut = HostClientState<H>;
 
     /// Called upon successful client creation and update
     fn store_client_state(

@@ -1,22 +1,20 @@
 use ibc::core::channel::types::packet::Packet;
-use ibc::core::client::types::error::ClientError;
+use ibc::core::client::context::client_state::ClientState;
 use ibc::core::host::types::identifiers::{ChannelId, ClientId, ConnectionId, PortId};
 use ibc::core::host::types::path::ChannelEndPath;
 use ibc::core::host::ValidationContext;
-use ibc::primitives::proto::Any;
 use ibc::primitives::Signer;
 
-use crate::context::{MockStore, TestContext};
+use crate::context::TestContext;
 use crate::hosts::{HostClientState, TestHost};
 use crate::relayer::utils::TypedRelayerOps;
+use crate::testapp::ibc::core::types::DefaultIbcStore;
 
 /// A relayer context that allows interaction between two [`TestContext`] instances.
 pub struct RelayerContext<A, B>
 where
-    A: TestHost<MockStore>,
-    B: TestHost<MockStore>,
-    <HostClientState<A, MockStore> as TryFrom<Any>>::Error: Into<ClientError>,
-    <HostClientState<B, MockStore> as TryFrom<Any>>::Error: Into<ClientError>,
+    A: TestHost,
+    B: TestHost,
 {
     ctx_a: TestContext<A>,
     ctx_b: TestContext<B>,
@@ -24,10 +22,10 @@ where
 
 impl<A, B> RelayerContext<A, B>
 where
-    A: TestHost<MockStore>,
-    B: TestHost<MockStore>,
-    <HostClientState<A, MockStore> as TryFrom<Any>>::Error: Into<ClientError>,
-    <HostClientState<B, MockStore> as TryFrom<Any>>::Error: Into<ClientError>,
+    A: TestHost,
+    B: TestHost,
+    HostClientState<A>: ClientState<DefaultIbcStore<A>, DefaultIbcStore<A>>,
+    HostClientState<B>: ClientState<DefaultIbcStore<B>, DefaultIbcStore<B>>,
 {
     /// Creates a new relayer context with the given [`TestContext`] instances.
     pub fn new(ctx_a: TestContext<A>, ctx_b: TestContext<B>) -> Self {

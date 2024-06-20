@@ -9,7 +9,9 @@ use ibc::core::channel::types::channel::{ChannelEnd, IdentifiedChannelEnd};
 use ibc::core::channel::types::commitment::{AcknowledgementCommitment, PacketCommitment};
 use ibc::core::channel::types::error::{ChannelError, PacketError};
 use ibc::core::channel::types::packet::{PacketState, Receipt};
-use ibc::core::client::context::client_state::ClientStateCommon;
+use ibc::core::client::context::client_state::{
+    ClientStateCommon, ClientStateExecution, ClientStateValidation,
+};
 use ibc::core::client::context::consensus_state::ConsensusState;
 use ibc::core::client::types::error::ClientError;
 use ibc::core::client::types::Height;
@@ -39,11 +41,12 @@ use super::types::{MockIbcStore, DEFAULT_BLOCK_TIME_SECS};
 impl<S, H> ValidationContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost<Self, Self>,
+    H: TestHost,
+    HostClientState<H>: ClientStateValidation<Self>,
 {
     type V = Self;
-    type HostClientState = HostClientState<H, Self, Self>;
-    type HostConsensusState = HostConsensusState<H, Self, Self>;
+    type HostClientState = HostClientState<H>;
+    type HostConsensusState = HostConsensusState<H>;
 
     fn host_height(&self) -> Result<Height, ContextError> {
         Ok(Height::new(
@@ -276,7 +279,7 @@ where
 impl<S, H> ProvableContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost<Self, Self>,
+    H: TestHost,
 {
     /// Returns the proof for the given [`Height`] and [`Path`]
     fn get_proof(&self, height: Height, path: &Path) -> Option<Vec<u8>> {
@@ -302,7 +305,8 @@ where
 impl<S, H> QueryContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost<Self, Self>,
+    H: TestHost,
+    HostClientState<H>: ClientStateValidation<Self>,
 {
     /// Returns the list of all client states.
     fn client_states(&self) -> Result<Vec<(ClientId, ClientStateRef<Self>)>, ContextError> {
@@ -645,7 +649,8 @@ where
 impl<S, H> ExecutionContext for MockIbcStore<S, H>
 where
     S: ProvableStore + Debug,
-    H: TestHost<Self, Self>,
+    H: TestHost,
+    HostClientState<H>: ClientStateExecution<Self>,
 {
     type E = Self;
 

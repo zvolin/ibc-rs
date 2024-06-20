@@ -1,8 +1,9 @@
+use ibc::core::client::context::client_state::ClientState;
 use ibc::core::host::types::identifiers::{ChannelId, ConnectionId, PortId};
 
 use crate::context::TestContext;
 use crate::fixtures::core::signer::dummy_account_id;
-use crate::hosts::TestHost;
+use crate::hosts::{HostClientState, TestHost};
 use crate::relayer::context::RelayerContext;
 use crate::testapp::ibc::core::types::DefaultIbcStore;
 
@@ -14,8 +15,10 @@ use crate::testapp::ibc::core::types::DefaultIbcStore;
 /// to simulate the transfer of tokens between two contexts.
 pub fn ibc_integration_test<A, B>()
 where
-    A: TestHost<DefaultIbcStore<A>, DefaultIbcStore<A>>,
-    B: TestHost<DefaultIbcStore<B>, DefaultIbcStore<B>>,
+    A: TestHost,
+    B: TestHost,
+    HostClientState<A>: ClientState<DefaultIbcStore<A>, DefaultIbcStore<A>>,
+    HostClientState<B>: ClientState<DefaultIbcStore<B>, DefaultIbcStore<B>>,
 {
     let ctx_a = TestContext::<A>::default();
     let ctx_b = TestContext::<B>::default();
@@ -162,14 +165,14 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::hosts::TendermintHost;
+    use crate::hosts::{MockHost, TendermintHost};
 
     // tests among all the `TestHost` implementations
     #[test]
     fn ibc_integration_test_for_all_pairs() {
-        // ibc_integration_test::<MockHost, MockHost>();
-        // ibc_integration_test::<MockHost, TendermintHost>();
-        // ibc_integration_test::<TendermintHost, MockHost>();
+        ibc_integration_test::<MockHost, MockHost>();
+        ibc_integration_test::<MockHost, TendermintHost>();
+        ibc_integration_test::<TendermintHost, MockHost>();
         ibc_integration_test::<TendermintHost, TendermintHost>();
     }
 }
